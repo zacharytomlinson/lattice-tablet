@@ -1,0 +1,476 @@
+import { NetworkItem } from "models.slint";
+import { CenteredGlyph, CenteredIconAction, Theme, ActivationSurface } from "foundation.slint";
+import { TextCommandButton } from "generic_primitives.slint";
+import { ScrollView } from "std-widgets.slint";
+
+component WifiStrengthIcon inherits Rectangle {
+    in property <int> strength;
+    in property <bool> connected;
+    private property <color> active-color: root.connected ? Theme.activation
+        : root.strength >= 35 ? Theme.text-muted
+        : Theme.warning;
+
+    width: 32px;
+    min-height: 24px;
+    vertical-stretch: 1;
+    background: transparent;
+
+    icon := Rectangle {
+        width: parent.width;
+        height: 24px;
+        y: (parent.height - self.height) / 2;
+        background: transparent;
+
+        Path {
+            width: parent.width;
+            height: parent.height;
+            viewbox-width: 24;
+            viewbox-height: 24;
+            stroke: root.strength >= 70 ? root.active-color : Theme.line;
+            stroke-width: 1.8px;
+            MoveTo { x: 2; y: 9; }
+            CubicTo { control-1-x: 7; control-1-y: 4; control-2-x: 17; control-2-y: 4; x: 22; y: 9; }
+        }
+        Path {
+            width: parent.width;
+            height: parent.height;
+            viewbox-width: 24;
+            viewbox-height: 24;
+            stroke: root.strength >= 40 ? root.active-color : Theme.line;
+            stroke-width: 1.8px;
+            MoveTo { x: 5.5; y: 13; }
+            CubicTo { control-1-x: 9; control-1-y: 9.5; control-2-x: 15; control-2-y: 9.5; x: 18.5; y: 13; }
+        }
+        Path {
+            width: parent.width;
+            height: parent.height;
+            viewbox-width: 24;
+            viewbox-height: 24;
+            stroke: root.strength >= 18 ? root.active-color : Theme.line;
+            stroke-width: 1.8px;
+            MoveTo { x: 9; y: 16.5; }
+            CubicTo { control-1-x: 10.7; control-1-y: 14.8; control-2-x: 13.3; control-2-y: 14.8; x: 15; y: 16.5; }
+        }
+        Rectangle {
+            x: parent.width / 2 - 1.5px;
+            y: parent.height * 0.79;
+            width: 3px;
+            height: 3px;
+            border-radius: 1.5px;
+            background: root.strength > 0 ? root.active-color : Theme.line;
+        }
+    }
+}
+
+component NetworkRow inherits Rectangle {
+    in property <NetworkItem> network;
+    in property <bool> selected;
+    callback clicked;
+
+    height: 54px;
+    background: Theme.surface;
+    border-width: 1px;
+    border-color: Theme.line;
+    ActivationSurface {
+        width: parent.width; height: parent.height;
+        active: root.selected; pressed: touch.pressed; hovered: touch.has-hover;
+        vertical-edge: true; edge-inset: 10px;
+    }
+    border-radius: 5px;
+
+    HorizontalLayout {
+        padding-left: 14px;
+        padding-right: 14px;
+        spacing: 12px;
+
+        Rectangle {
+            width: 10px;
+            height: 10px;
+            y: (parent.height - self.height) / 2;
+            border-radius: 5px;
+            background: root.network.connected ? Theme.activation : Theme.line-strong;
+        }
+
+        VerticalLayout {
+            alignment: center;
+            spacing: 1px;
+            horizontal-stretch: 1;
+
+            Text {
+                text: root.network.name;
+                color: Theme.text;
+                font-size: 14px;
+                font-weight: 500;
+                overflow: elide;
+            }
+
+            Text {
+                text: root.network.connected ? "CONNECTED" : root.network.security.to-uppercase();
+                color: root.network.connected ? Theme.activation : Theme.text-muted;
+                font-size: 9px;
+                font-weight: 600;
+            }
+        }
+
+        WifiStrengthIcon {
+            strength: root.network.signal;
+            connected: root.network.connected;
+        }
+    }
+
+    touch := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+component KeyButton inherits Rectangle {
+    in property <string> label;
+    in property <bool> wide;
+    callback pressed;
+
+    min-width: root.wide ? 64px : 44px;
+    horizontal-stretch: root.wide ? 2 : 1;
+    height: 52px;
+    accessible-role: button;
+    accessible-label: root.label;
+    background: Theme.surface-raised;
+    ActivationSurface {
+        width: parent.width; height: parent.height;
+        pressed: touch.pressed; hovered: touch.has-hover;
+    }
+    border-width: 1px;
+    border-color: Theme.line-strong;
+    border-radius: 4px;
+
+    Text {
+        text: root.label;
+        color: Theme.text;
+        font-size: 18px;
+        font-weight: 500;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+
+    touch := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.pressed(); }
+    }
+}
+
+export component SettingsInput inherits Rectangle {
+    in property <string> value;
+    in property <string> hint;
+    in property <bool> secret: false;
+    in property <bool> active: false;
+    callback activated;
+
+    height: 40px;
+    background: root.active ? Theme.activation-soft : Theme.surface-soft;
+    border-width: 1px;
+    border-color: root.active ? Theme.activation : Theme.line-strong;
+    border-radius: 4px;
+
+    if root.value == "" : Text {
+        x: 11px;
+        width: parent.width - 22px;
+        height: parent.height;
+        text: root.hint;
+        color: Theme.text-muted;
+        font-size: 12px;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    if root.value != "" && !root.secret : Text {
+        x: 11px;
+        width: parent.width - 22px;
+        height: parent.height;
+        text: root.value;
+        color: Theme.text;
+        font-size: 12px;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    if root.value != "" && root.secret : TextInput {
+        x: 11px;
+        width: parent.width - 22px;
+        height: parent.height;
+        text: root.value;
+        color: Theme.text;
+        font-size: 12px;
+        vertical-alignment: center;
+        input-type: InputType.password;
+        read-only: true;
+        accessible-role: none;
+    }
+
+    TouchArea {
+        mouse-cursor: text;
+        clicked => { root.activated(); }
+    }
+}
+
+export component TouchKeyboard inherits Rectangle {
+    callback key(string);
+    callback backspace;
+    callback done;
+    private property <bool> shifted: false;
+    private property <bool> symbols: false;
+
+    height: 256px;
+    background: Theme.rail;
+    border-width: 1px;
+    border-color: Theme.line;
+    border-radius: 6px;
+
+    VerticalLayout {
+        padding: 12px;
+        spacing: 8px;
+
+        HorizontalLayout {
+            spacing: 8px;
+            alignment: stretch;
+            for key in root.symbols
+                ? ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"]
+                : ["q", "w", "e", "r", "t", "y", "u", "i", "o", "p"] : KeyButton {
+                label: root.shifted ? key.to-uppercase() : key;
+                pressed => { root.key(self.label); }
+            }
+        }
+
+        HorizontalLayout {
+            spacing: 8px;
+            alignment: stretch;
+            for key in root.symbols
+                ? ["-", "_", "@", ".", "#", "!", "$", "%", "&", "*"]
+                : ["a", "s", "d", "f", "g", "h", "j", "k", "l"] : KeyButton {
+                label: root.shifted ? key.to-uppercase() : key;
+                pressed => { root.key(self.label); }
+            }
+        }
+
+        HorizontalLayout {
+            spacing: 8px;
+            alignment: stretch;
+
+            KeyButton {
+                label: root.symbols ? "ABC" : (root.shifted ? "abc" : "ABC");
+                wide: true;
+                pressed => {
+                    if (root.symbols) {
+                        root.symbols = false;
+                    } else {
+                        root.shifted = !root.shifted;
+                    }
+                }
+            }
+
+            for key in root.symbols
+                ? ["/", "\\", "+", "=", ":", ";", "?", "(", ")"]
+                : ["z", "x", "c", "v", "b", "n", "m"] : KeyButton {
+                label: root.shifted ? key.to-uppercase() : key;
+                pressed => { root.key(self.label); }
+            }
+
+            KeyButton { label: "DEL"; wide: true; pressed => { root.backspace(); } }
+        }
+
+        HorizontalLayout {
+            spacing: 8px;
+            alignment: stretch;
+            KeyButton {
+                label: root.symbols ? "ABC" : "123";
+                wide: true;
+                pressed => { root.symbols = !root.symbols; root.shifted = false; }
+            }
+            KeyButton { label: "SPACE"; wide: true; horizontal-stretch: 6; pressed => { root.key(" "); } }
+            KeyButton { label: "DONE"; wide: true; pressed => { root.done(); } }
+        }
+    }
+}
+
+export component SettingsView inherits Rectangle {
+    in property <[NetworkItem]> networks;
+    in property <bool> network-available;
+    in property <bool> network-scanning;
+    in property <string> network-status;
+    in-out property <string> network-password;
+    in-out property <int> active-field;
+    callback refresh-networks;
+    callback connect-network(string, string);
+    callback disconnect-network;
+    callback keyboard-key(string);
+    callback keyboard-backspace;
+
+    private property <string> selected-network-id;
+    private property <string> selected-network-name;
+    private property <string> selected-network-security;
+    private property <bool> keyboard-visible: false;
+    private property <bool> selected-connected: false;
+    private property <bool> entering-network-password:
+        root.keyboard-visible && root.active-field == 1;
+    private property <length> keyboard-height: 256px;
+
+    background: transparent;
+
+    VerticalLayout {
+        padding-left: 36px;
+        padding-right: 36px;
+        padding-top: 28px;
+        padding-bottom: root.keyboard-visible ? root.keyboard-height + 18px : 28px;
+        spacing: 16px;
+
+        HorizontalLayout {
+            height: 46px;
+            spacing: 12px;
+
+            CenteredGlyph {
+                icon: @image-url("../assets/icons/settings.svg");
+                tint: Theme.activation;
+                glyph-size: 22px;
+            }
+
+            VerticalLayout {
+                alignment: center;
+                spacing: 1px;
+                horizontal-stretch: 1;
+                Text { text: "Settings"; color: Theme.text; font-size: 22px; font-weight: 500; }
+                Text { text: "TABLET CONNECTIONS"; color: Theme.text-muted; font-size: 9px; font-weight: 600; }
+            }
+
+            CenteredIconAction {
+                icon: @image-url("../assets/icons/refresh-cw.svg");
+                accessible-name: root.network-scanning ? "Scanning for Wi-Fi" : "Refresh Wi-Fi";
+                active: root.network-scanning;
+                enabled: !root.network-scanning;
+                clicked => { root.refresh-networks(); }
+            }
+        }
+
+        HorizontalLayout {
+            vertical-stretch: 1;
+            spacing: 18px;
+
+            Rectangle {
+                horizontal-stretch: 3;
+                background: transparent;
+
+                VerticalLayout {
+                    spacing: 10px;
+
+                    HorizontalLayout {
+                        height: 28px;
+                        Text { text: "WI-FI"; color: Theme.text-muted; font-size: 10px; font-weight: 600; }
+                        Text {
+                            text: root.network-status;
+                            color: root.network-available ? Theme.text-muted : Theme.warning;
+                            font-size: 11px;
+                            horizontal-alignment: right;
+                            vertical-alignment: center;
+                            overflow: elide;
+                        }
+                    }
+
+                    ScrollView {
+                        mouse-drag-pan-enabled: true;
+                        viewport-width: self.width;
+                        viewport-height: max(self.visible-height, network-list.preferred-height);
+
+                        network-list := VerticalLayout {
+                            spacing: 7px;
+                            for network in root.networks : NetworkRow {
+                                network: network;
+                                selected: root.selected-network-id == network.id;
+                                clicked => {
+                                    root.selected-network-id = network.id;
+                                    root.selected-network-name = network.name;
+                                    root.selected-network-security = network.security;
+                                    root.selected-connected = network.connected;
+                                    root.network-password = "";
+                                    root.active-field = 1;
+                                    root.keyboard-visible = !network.connected && network.security != "open";
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Rectangle {
+                horizontal-stretch: 2;
+                background: Theme.surface;
+                border-width: 1px;
+                border-color: Theme.line;
+                border-radius: 6px;
+
+                VerticalLayout {
+                    padding: 18px;
+                    spacing: 12px;
+
+                    Text { text: "NETWORK ACCESS"; color: Theme.text-muted; font-size: 10px; font-weight: 600; }
+                    Text {
+                        text: root.selected-network-name == "" ? "Select a network" : root.selected-network-name;
+                        color: Theme.text;
+                        font-size: 18px;
+                        font-weight: 500;
+                        overflow: elide;
+                    }
+
+                    if root.selected-network-name != "" && !root.selected-connected && root.selected-network-security != "open" : SettingsInput {
+                        height: 44px;
+                        value: root.network-password;
+                        hint: "Network password";
+                        secret: true;
+                        active: root.entering-network-password;
+                        activated => { root.active-field = 1; root.keyboard-visible = true; }
+                    }
+
+                    if root.selected-network-name == "" : Text {
+                        text: "Choose a nearby network to configure this tablet.";
+                        color: Theme.text-muted;
+                        font-size: 12px;
+                        wrap: word-wrap;
+                    }
+
+                    Rectangle { background: transparent; }
+
+                    if root.selected-connected : TextCommandButton {
+                        label: "Disconnect";
+                        enabled: root.network-available;
+                        clicked => { root.disconnect-network(); }
+                    }
+
+                    if root.selected-network-name != "" && !root.selected-connected : TextCommandButton {
+                        label: "Connect";
+                        enabled: root.network-available
+                            && (root.selected-network-security == "open" || root.network-password != "");
+                        clicked => {
+                            root.keyboard-visible = false;
+                            root.connect-network(root.selected-network-id, root.network-password);
+                        }
+                    }
+
+                    if !root.entering-network-password : VerticalLayout {
+                        height: 56px;
+                        spacing: 12px;
+                        Rectangle { height: 1px; background: Theme.line; }
+                        Text { text: "LATTICE RADIO"; color: Theme.text-muted; font-size: 10px; font-weight: 600; }
+                        Text { text: "Not connected"; color: Theme.text-muted; font-size: 11px; }
+                    }
+
+                }
+            }
+        }
+    }
+
+    if root.keyboard-visible : TouchKeyboard {
+        x: 8px;
+        y: root.height - self.height - 8px;
+        width: root.width - 16px;
+        key(value) => { root.keyboard-key(value); }
+        backspace => { root.keyboard-backspace(); }
+        done => { root.keyboard-visible = false; }
+    }
+}

@@ -1,0 +1,33 @@
+[package]
+name = "lattice-tablet"
+version = "0.1.0"
+edition = "2024"
+build = "build.rs"
+publish = false
+repository = "https://github.com/zacharytomlinson/lattice-tablet"
+description = "Lattice tablet frontend and independent StarLite OS image"
+exclude = ["/experiments/", "/lab/"]
+
+[workspace]
+
+[features]
+default = ["wayland", "gpu"]
+wayland = ["slint/backend-winit-wayland", "dep:i-slint-backend-winit"]
+linuxkms = ["slint/backend-linuxkms"]
+linuxkms-noseat = ["slint/backend-linuxkms-noseat"]
+gpu = ["slint/renderer-femtovg"]
+software = ["slint/renderer-software"]
+
+[dependencies]
+i-slint-backend-winit = { version = "=1.17.1", default-features = false, features = ["wayland"], optional = true }
+slint = { version = "=1.17.1", default-features = false, features = ["std", "compat-1-2"] }
+zbus = { version = "=5.18.0", default-features = false, features = ["async-io", "blocking-api"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+fontique = { version = "=0.10.0", default-features = false, features = ["fontconfig-dlopen"] }
+
+[build-dependencies]
+slint-build = "=1.17.1"
+
+[dev-dependencies]
+png = "0.18"

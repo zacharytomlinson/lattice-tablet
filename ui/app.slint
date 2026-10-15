@@ -1,0 +1,169 @@
+import "../assets/fonts/Inter-Regular.ttf";
+import "../assets/fonts/Inter-Light.ttf";
+import "../assets/fonts/Inter-Medium.ttf";
+import "../assets/fonts/Inter-SemiBold.ttf";
+import "../assets/fonts/Inter-Bold.ttf";
+import { CameraItem, ClimateItem, GenericObjectItem, LightItem, MediaAppItem, MediaItem, NetworkItem, RoomItem, ShadeItem } from "models.slint";
+import { AtmosphereBackdrop, CenteredIconPlate, NavItem, Theme } from "foundation.slint";
+import { HomeView } from "home_screen.slint";
+import { RoomView } from "room_screen.slint";
+import { SettingsView } from "settings.slint";
+
+export component MainWindow inherits Window {
+    in-out property <string> current-view: "home";
+    in property <[RoomItem]> rooms;
+    in property <string> home-status;
+    in property <bool> home-has-alert;
+    in property <bool> state-known: false;
+    in property <int> active-count;
+    in property <int> appliance-count;
+    callback open-room(string);
+    in property <[NetworkItem]> networks;
+    in property <bool> network-available;
+    in property <bool> network-scanning;
+    in property <string> network-status: "Refresh to find Wi-Fi networks";
+    in-out property <string> network-password;
+    in-out property <int> active-field: 1;
+    callback refresh-networks;
+    callback connect-network(string, string);
+    callback disconnect-network;
+    callback keyboard-key(string);
+    callback keyboard-backspace;
+    in property <bool> can-edit-devices;
+    callback edit-device(string);
+    in property <string> room-name;
+    in property <int> object-count;
+    in property <string> generic-section-name;
+    in property <[LightItem]> lights;
+    in property <[ClimateItem]> climates;
+    in property <[MediaItem]> media;
+    in property <[MediaAppItem]> media-apps;
+    in property <[ShadeItem]> shades;
+    in property <[CameraItem]> cameras;
+    in property <[GenericObjectItem]> generic-objects;
+    in property <string> last-command;
+    in property <int> last-command-state;
+    callback set-light-power(string, bool);
+    callback preview-light-level(string, int);
+    callback set-light-level(string, int);
+    callback set-climate-setpoint(string, float);
+    callback set-climate-mode(string, string);
+    callback set-media-power(string, bool);
+    callback set-media-volume(string, int);
+    callback set-media-mute(string, bool);
+    callback invoke-media-action(string, string);
+    callback launch-media-app(string, string);
+    callback set-shade-position(string, int);
+    callback invoke-shade-action(string, string);
+    callback view-camera-preview(string);
+    callback set-generic-binary(string, bool);
+    callback set-generic-number(string, float);
+    callback step-generic-number(string, float);
+    callback select-generic-choice(string, string);
+    callback invoke-generic-action(string);
+    callback submit-generic-text(string, string);
+
+
+    title: "Lattice";
+    preferred-width: 1180px;
+    preferred-height: 720px;
+    min-width: 620px;
+    min-height: 560px;
+    background: Theme.canvas;
+    default-font-family: "Inter";
+    private property <bool> compact: self.width < 780px || self.height > self.width;
+    private property <length> rail-width: root.compact ? 72px : 204px;
+
+    AtmosphereBackdrop { width: parent.width; height: parent.height; }
+    Rectangle {
+        x: 0px; y: 0px;
+        width: root.rail-width; height: parent.height;
+        background: @linear-gradient(90deg, #0c0f0e30, #0c0f0e00);
+        VerticalLayout {
+            padding-left: root.compact ? 10px : 18px;
+            padding-right: root.compact ? 10px : 18px;
+            padding-top: 24px; padding-bottom: 20px; spacing: 8px;
+            HorizontalLayout {
+                height: 58px; spacing: root.compact ? 0px : 12px; alignment: center;
+                CenteredIconPlate {
+                    icon: @image-url("../assets/icons/house.svg");
+                    tint: Theme.text-muted; plate-color: transparent;
+                    plate-size: 32px; glyph-size: 17px; radius: 4px;
+                }
+                if !root.compact : VerticalLayout {
+                    alignment: center; spacing: 1px;
+                    Text { text: "LATTICE"; color: Theme.text; font-size: 16px; font-weight: 700; }
+                    Text { text: "HOME SYSTEM"; color: Theme.text-muted; font-size: 9px; font-weight: 500; }
+                }
+            }
+            Rectangle { height: 10px; background: transparent; }
+            NavItem {
+                icon: @image-url("../assets/icons/house.svg"); label: "Home";
+                active: root.current-view == "home"; show-label: !root.compact;
+                clicked => { root.current-view = "home"; }
+            }
+            Rectangle { vertical-stretch: 1; background: transparent; }
+            NavItem {
+                icon: @image-url("../assets/icons/settings.svg"); label: "Settings";
+                active: root.current-view == "settings"; show-label: !root.compact;
+                clicked => { root.current-view = "settings"; }
+            }
+        }
+    }
+    Rectangle {
+        x: root.rail-width; y: 0px;
+        width: parent.width - self.x; height: parent.height;
+        background: transparent;
+        if root.current-view == "home" : HomeView {
+            rooms: root.rooms; home-status: root.home-status; home-has-alert: root.home-has-alert;
+            active-count: root.active-count; appliance-count: root.appliance-count;
+            state-known: root.state-known;
+            open-room(id) => { root.open-room(id); }
+        }
+        if root.current-view == "settings" : SettingsView {
+            networks: root.networks; network-available: root.network-available;
+            network-scanning: root.network-scanning; network-status: root.network-status;
+            network-password <=> root.network-password; active-field <=> root.active-field;
+            refresh-networks => { root.refresh-networks(); }
+            connect-network(id, password) => { root.connect-network(id, password); }
+            disconnect-network => { root.disconnect-network(); }
+            keyboard-key(key) => { root.keyboard-key(key); }
+            keyboard-backspace => { root.keyboard-backspace(); }
+        }
+        if root.current-view == "room" : RoomView {
+            can-edit-devices: root.can-edit-devices;
+            room-name: root.room-name;
+            object-count: root.object-count;
+            generic-section-name: root.generic-section-name;
+            lights: root.lights;
+            climates: root.climates;
+            media: root.media;
+            media-apps: root.media-apps;
+            shades: root.shades;
+            cameras: root.cameras;
+            generic-objects: root.generic-objects;
+            last-command: root.last-command;
+            last-command-state: root.last-command-state;
+            edit-device(a0) => { root.edit-device(a0); }
+            set-light-power(a0, a1) => { root.set-light-power(a0, a1); }
+            preview-light-level(a0, a1) => { root.preview-light-level(a0, a1); }
+            set-light-level(a0, a1) => { root.set-light-level(a0, a1); }
+            set-climate-setpoint(a0, a1) => { root.set-climate-setpoint(a0, a1); }
+            set-climate-mode(a0, a1) => { root.set-climate-mode(a0, a1); }
+            set-media-power(a0, a1) => { root.set-media-power(a0, a1); }
+            set-media-volume(a0, a1) => { root.set-media-volume(a0, a1); }
+            set-media-mute(a0, a1) => { root.set-media-mute(a0, a1); }
+            invoke-media-action(a0, a1) => { root.invoke-media-action(a0, a1); }
+            launch-media-app(a0, a1) => { root.launch-media-app(a0, a1); }
+            set-shade-position(a0, a1) => { root.set-shade-position(a0, a1); }
+            invoke-shade-action(a0, a1) => { root.invoke-shade-action(a0, a1); }
+            view-camera-preview(a0) => { root.view-camera-preview(a0); }
+            set-generic-binary(a0, a1) => { root.set-generic-binary(a0, a1); }
+            set-generic-number(a0, a1) => { root.set-generic-number(a0, a1); }
+            step-generic-number(a0, a1) => { root.step-generic-number(a0, a1); }
+            select-generic-choice(a0, a1) => { root.select-generic-choice(a0, a1); }
+            invoke-generic-action(a0) => { root.invoke-generic-action(a0); }
+            submit-generic-text(a0, a1) => { root.submit-generic-text(a0, a1); }
+        }
+    }
+}

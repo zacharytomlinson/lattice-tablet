@@ -1,0 +1,35 @@
+MACHINE = "genericx86-64"
+DISTRO = "lattice-tablet"
+
+# StarLite has no usable PC UART. Keep the local virtual console for recovery.
+SERIAL_CONSOLES = ""
+
+INIT_MANAGER = "systemd"
+DISTRO_FEATURES:append = " wayland opengl pam wifi bluetooth systemd-resolved"
+DISTRO_FEATURES:remove = " x11"
+
+EFI_PROVIDER = "systemd-boot"
+WKS_FILE = "lattice-starlite-removable.wks.in"
+IMAGE_FSTYPES = "wic wic.bmap wic.zst"
+VOLATILE_LOG_DIR = "no"
+
+DL_DIR = "@WORKDIR@/downloads"
+SSTATE_DIR = "@WORKDIR@/sstate"
+LATTICE_TABLET_ARTIFACT_DIR = "@ARTIFACT_DIR@"
+
+BB_NUMBER_THREADS = "12"
+PARALLEL_MAKE = "-j 12"
+
+INHERIT += "rm_work"
+RM_WORK_EXCLUDE += "lattice-tablet-image"
+
+BB_DISKMON_DIRS = "\
+    STOPTASKS,${TMPDIR},20000000000,200000 \
+    STOPTASKS,${DL_DIR},10000000000,200000 \
+    STOPTASKS,${SSTATE_DIR},10000000000,200000 \
+    HALT,${TMPDIR},5000000000,50000 \
+    HALT,${DL_DIR},5000000000,50000 \
+    HALT,${SSTATE_DIR},5000000000,50000 \
+    "
+
+CONF_VERSION = "2"

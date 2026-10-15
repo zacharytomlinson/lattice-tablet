@@ -1,0 +1,61 @@
+import { GenericChoiceItem, ChoiceSymbol } from "models.slint";
+import { Theme, Glyph, ActivationSurface } from "foundation.slint";
+
+export component ChoiceSelector inherits Rectangle {
+    in property <[GenericChoiceItem]> choices;
+    in property <string> label;
+    in property <bool> enabled: true;
+    callback selected(string);
+    height: 48px;
+    min-width: root.choices.length * 44px;
+    background: transparent;
+    opacity: root.enabled ? 1 : 0.4;
+    accessible-role: radio-group;
+    accessible-label: root.label;
+
+    HorizontalLayout {
+        padding: 1px;
+        spacing: 0px;
+        for choice in root.choices : Rectangle {
+            horizontal-stretch: 1;
+            background: transparent;
+            accessible-role: radio-button;
+            accessible-label: choice.label;
+            accessible-checked: choice.selected;
+            accessible-enabled: root.enabled;
+            accessible-action-default => {
+                if (root.enabled) { root.selected(choice.id); }
+            }
+
+            treatment := ActivationSurface {
+                width: parent.width; height: parent.height;
+                active: choice.selected; pressed: touch.pressed; hovered: touch.has-hover;
+                edge-inset: 10px;
+            }
+
+            if choice.symbol != ChoiceSymbol.none : Glyph {
+                source: choice.symbol == ChoiceSymbol.airflow-down
+                    ? @image-url("../assets/icons/airflow-down.svg")
+                    : @image-url("../assets/icons/airflow-vertical.svg");
+                tint: treatment.icon-ink;
+                width: 22px;
+                height: 22px;
+                x: (parent.width - self.width) / 2;
+                y: (parent.height - self.height) / 2;
+            }
+            if choice.symbol == ChoiceSymbol.none : Text {
+                text: choice.label;
+                color: treatment.label-ink;
+                font-size: Theme.control-label-size;
+                font-weight: choice.selected ? 600 : 400;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+            touch := TouchArea {
+                enabled: root.enabled;
+                mouse-cursor: self.enabled ? pointer : default;
+                clicked => { root.selected(choice.id); }
+            }
+        }
+    }
+}

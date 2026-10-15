@@ -1,0 +1,1 @@
+hostname = "lattice-tablet"

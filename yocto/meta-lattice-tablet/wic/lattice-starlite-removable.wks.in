@@ -1,0 +1,9 @@
+# Single-root removable-media bring-up. Production A/B partitioning is deferred
+# until display, touch, networking, suspend, and recovery are validated here.
+# Appliance identity is already isolated from the replaceable root so the same
+# state filesystem can be retained when the A/B layout is introduced.
+part /boot --source bootimg-efi --sourceparams="loader=systemd-boot,title=Lattice Tablet" --ondisk sda --fstype=vfat --label LATTICEBOOT --active --align 1024 --size 256 --use-uuid
+part / --source rootfs --ondisk sda --fstype=ext4 --label lattice-root --align 1024 --use-uuid --size 4096
+part /var/lib --source rootfs --rootfs-dir=${IMAGE_ROOTFS}/var/lib --ondisk sda --fstype=ext4 --label lattice-state --align 1024 --use-uuid --size 512
+
+bootloader --ptable gpt --timeout=0 --append="rootfstype=ext4 rootwait quiet splash plymouth.ignore-serial-consoles loglevel=3 systemd.show_status=false vt.global_cursor_default=0"

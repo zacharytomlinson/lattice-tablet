@@ -1,0 +1,139 @@
+import { DeviceSettingsButton } from "common_controls.slint";
+import { ShadeItem } from "models.slint";
+import { Theme } from "foundation.slint";
+import { ActionIconButton, DimmerRail } from "common_controls.slint";
+
+export component ShadeControl inherits Rectangle {
+    in property <ShadeItem> shade;
+    in property <bool> can-edit;
+    callback edit-device(string);
+    callback set-position(string, int);
+    callback invoke-action(string, string);
+    private property <int> local-position: shade.position;
+
+    changed shade => {
+        if (!position-rail.dragging) {
+            root.local-position = shade.position;
+        }
+    }
+
+    height: 190px;
+    background: Theme.surface;
+    border-width: 1px;
+    border-color: root.shade.availability == 2 ? #51342a : Theme.line;
+    border-radius: 6px;
+    drop-shadow-blur: 4px;
+    drop-shadow-offset-y: 2px;
+    drop-shadow-color: Theme.shadow;
+
+    VerticalLayout {
+        padding-left: 18px;
+        padding-right: 18px;
+        padding-top: 16px;
+        padding-bottom: 14px;
+        spacing: 12px;
+
+        HorizontalLayout {
+            height: Theme.touch-target;
+            spacing: 14px;
+
+            DeviceSettingsButton {
+                icon: @image-url("../assets/icons/blinds.svg");
+                accessible-label: "Settings for " + root.shade.name;
+                enabled: root.can-edit;
+                clicked => { root.edit-device(root.shade.id); }
+            }
+
+
+
+            VerticalLayout {
+                alignment: center;
+                spacing: 3px;
+
+                Text {
+                    text: root.shade.name;
+                    color: Theme.text;
+                    font-size: 16px;
+                    font-weight: 600;
+                }
+
+                Text {
+                    text: root.shade.status;
+                    color: root.shade.availability == 2 ? Theme.warning
+                        : root.shade.availability == 1 ? Theme.text-muted
+                        : Theme.text-muted;
+                    font-size: 11px;
+                }
+            }
+
+            Text {
+                width: 82px;
+                text: root.local-position + "%";
+                color: root.shade.writable ? Theme.text : Theme.text-muted;
+                font-size: 21px;
+                font-weight: 300;
+                horizontal-alignment: right;
+                vertical-alignment: center;
+            }
+        }
+
+        HorizontalLayout {
+            height: 44px;
+            spacing: 10px;
+            alignment: center;
+
+            Text {
+                width: 48px;
+                text: "CLOSED";
+                color: Theme.text-muted;
+                font-size: 9px;
+                font-weight: 500;
+                vertical-alignment: center;
+            }
+
+            position-rail := DimmerRail {
+                width: 420px;
+                model-value: root.shade.position;
+                enabled: root.shade.writable;
+                preview(position) => { root.local-position = position; }
+                released(position) => { root.set-position(root.shade.id, position); }
+            }
+
+            Text {
+                width: 34px;
+                text: "OPEN";
+                color: Theme.text-muted;
+                font-size: 9px;
+                font-weight: 500;
+                horizontal-alignment: right;
+                vertical-alignment: center;
+            }
+        }
+
+        HorizontalLayout {
+            height: 42px;
+            spacing: 8px;
+
+            if root.shade.supports-open : ActionIconButton {
+                icon: @image-url("../assets/icons/chevron-up.svg");
+                label: "Open";
+                enabled: root.shade.availability != 2;
+                clicked => { root.invoke-action(root.shade.id, "home.shade.open"); }
+            }
+
+            if root.shade.supports-stop : ActionIconButton {
+                icon: @image-url("../assets/icons/square.svg");
+                label: "Stop";
+                enabled: root.shade.availability != 2;
+                clicked => { root.invoke-action(root.shade.id, "home.shade.stop"); }
+            }
+
+            if root.shade.supports-close : ActionIconButton {
+                icon: @image-url("../assets/icons/chevron-down.svg");
+                label: "Close";
+                enabled: root.shade.availability != 2;
+                clicked => { root.invoke-action(root.shade.id, "home.shade.close"); }
+            }
+        }
+    }
+}

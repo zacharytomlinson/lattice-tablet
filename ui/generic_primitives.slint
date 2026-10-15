@@ -1,0 +1,129 @@
+import { Theme, ActivationSurface } from "foundation.slint";
+
+export component ScalarRail inherits Rectangle {
+    in property <float> model-value;
+    in property <float> minimum;
+    in property <float> maximum;
+    in property <bool> enabled: true;
+    out property <bool> dragging;
+    callback preview(float);
+    callback released(float);
+
+    private property <float> range: max(0.0001, root.maximum - root.minimum);
+    private property <float> visual-value: root.model-value;
+    private property <length> thumb-size: 22px;
+    private property <length> travel: max(1px, self.width - self.thumb-size);
+
+    changed model-value => {
+        if (!root.dragging) {
+            root.visual-value = root.model-value;
+        }
+    }
+
+    height: 44px;
+    background: transparent;
+    opacity: root.enabled ? 1 : 0.38;
+
+    Rectangle {
+        x: root.thumb-size / 2;
+        y: (parent.height - self.height) / 2;
+        width: root.travel;
+        height: 3px;
+        border-radius: 3px;
+        background: Theme.surface-raised;
+
+        Rectangle {
+            width: parent.width * (root.visual-value - root.minimum) / root.range;
+            height: parent.height;
+            border-radius: 3px;
+            background: Theme.activation;
+        }
+    }
+
+    Rectangle {
+        width: root.thumb-size;
+        height: root.thumb-size;
+        x: root.travel * (root.visual-value - root.minimum) / root.range;
+        y: (parent.height - self.height) / 2;
+        border-radius: 11px;
+        background: Theme.activation-soft;
+        border-width: 1px;
+        border-color: Theme.activation;
+    }
+
+    touch := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+
+        pointer-event(event) => {
+            if (event.button != PointerEventButton.left) {
+                return;
+            }
+            if (event.kind == PointerEventKind.down) {
+                root.dragging = true;
+                root.visual-value = root.minimum
+                    + max(0, min(1, (self.mouse-x - root.thumb-size / 2) / root.travel))
+                    * root.range;
+                root.preview(root.visual-value);
+            } else if (event.kind == PointerEventKind.up) {
+                root.visual-value = root.minimum
+                    + max(0, min(1, (self.mouse-x - root.thumb-size / 2) / root.travel))
+                    * root.range;
+                root.preview(root.visual-value);
+                root.dragging = false;
+                root.released(root.visual-value);
+            } else if (event.kind == PointerEventKind.cancel) {
+                root.dragging = false;
+                root.visual-value = root.model-value;
+                root.preview(root.model-value);
+            }
+        }
+
+        moved => {
+            if (self.pressed) {
+                root.visual-value = root.minimum
+                    + max(0, min(1, (self.mouse-x - root.thumb-size / 2) / root.travel))
+                    * root.range;
+                root.preview(root.visual-value);
+            }
+        }
+    }
+}
+
+export component TextCommandButton inherits Rectangle {
+    in property <string> label;
+    in property <bool> enabled: true;
+    in property <bool> guarded: false;
+    callback clicked;
+
+    min-width: 92px;
+    height: 38px;
+    border-radius: 4px;
+    background: root.guarded && touch.pressed ? #51342a : Theme.surface-soft;
+    if !root.guarded : ActivationSurface {
+        width: parent.width; height: parent.height;
+        pressed: touch.pressed; hovered: touch.has-hover;
+    }
+    border-width: 1px;
+    border-color: root.guarded ? Theme.warning : Theme.line-strong;
+    opacity: root.enabled ? 1 : 0.42;
+
+    Text {
+        x: 12px;
+        width: parent.width - 24px;
+        height: parent.height;
+        text: root.label;
+        color: root.guarded ? Theme.warning : touch.pressed ? Theme.activation-bright : Theme.text;
+        font-size: 12px;
+        font-weight: 600;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    touch := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}

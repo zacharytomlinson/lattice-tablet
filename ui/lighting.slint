@@ -1,0 +1,98 @@
+import { DeviceSettingsButton } from "common_controls.slint";
+import { LightItem } from "models.slint";
+import { Theme } from "foundation.slint";
+import { PowerButton, DimmerRail } from "common_controls.slint";
+
+export component LightControl inherits Rectangle {
+    in property <LightItem> light;
+    in property <bool> can-edit;
+    callback edit-device(string);
+    callback set-power(string, bool);
+    callback preview-level(string, int);
+    callback set-level(string, int);
+    accessible-role: groupbox;
+    accessible-label: root.light.name;
+    private property <int> local-level: light.level;
+
+    changed light => {
+        if (!dimmer.dragging) {
+            root.local-level = light.level;
+        }
+    }
+
+    height: content.preferred-height;
+    background: Theme.surface;
+    border-width: 1px;
+    border-color: root.light.availability == 2 ? #51342a : Theme.line;
+    border-radius: 6px;
+    drop-shadow-blur: 4px;
+    drop-shadow-offset-y: 2px;
+    drop-shadow-color: Theme.shadow;
+
+    content := VerticalLayout {
+        alignment: start;
+        padding-left: 18px;
+        padding-right: 18px;
+        padding-top: 16px;
+        padding-bottom: 14px;
+        spacing: 14px;
+
+        HorizontalLayout {
+            height: 48px;
+            spacing: 14px;
+
+            DeviceSettingsButton {
+                icon: @image-url("../assets/icons/lightbulb.svg");
+                accessible-label: "Settings for " + root.light.name;
+                enabled: root.can-edit;
+                clicked => { root.edit-device(root.light.id); }
+            }
+
+            VerticalLayout {
+                alignment: center;
+                spacing: 3px;
+                horizontal-stretch: 1;
+
+                if root.light.display-label != "" : Text {
+                    text: root.light.display-label;
+                    color: Theme.text;
+                    font-size: 16px;
+                    font-weight: 600;
+                }
+
+                if root.light.status != "On" && root.light.status != "Off" : Text {
+                    text: root.light.status;
+                    color: root.light.availability == 2 ? Theme.warning
+                        : root.light.power ? Theme.activation
+                        : Theme.text-muted;
+                    font-size: 11px;
+                }
+            }
+
+            Text {
+                text: root.local-level + "%";
+                color: root.light.power ? Theme.text : Theme.text-muted;
+                font-size: 21px;
+                font-weight: 300;
+                horizontal-alignment: right;
+                vertical-alignment: center;
+                width: 62px;
+            }
+
+            PowerButton {
+                accessible-name: (root.light.power ? "Turn off " : "Turn on ") + root.light.name;
+                checked: root.light.power;
+                enabled: root.light.availability != 2;
+                toggled(on) => { root.set-power(root.light.power-handle, on); }
+            }
+        }
+
+        dimmer := DimmerRail {
+            model-value: root.light.level;
+            enabled: root.light.writable && root.light.availability != 2;
+            preview(level) => { root.local-level = level; }
+            interacted(level) => { root.preview-level(root.light.level-handle, level); }
+            released(level) => { root.set-level(root.light.level-handle, level); }
+        }
+    }
+}

@@ -1,0 +1,163 @@
+export struct RoomItem {
+    id: string,
+    name: string,
+    summary: string,
+    device-count: int,
+    has-exception: bool,
+}
+
+export struct LightItem {
+    id: string,
+    power-handle: string,
+    level-handle: string,
+    name: string,
+    display-label: string,
+    status: string,
+    level: int,
+    power: bool,
+    availability: int,
+    writable: bool,
+    pending: bool,
+}
+
+export struct ClimateItem {
+    id: string,
+    name: string,
+    current-temperature: float,
+    setpoint: float,
+    minimum-setpoint: float,
+    maximum-setpoint: float,
+    setpoint-step: float,
+    unit-label: string,
+    mode: string,
+    status: string,
+    availability: int,
+    writable: bool,
+    supports-off: bool,
+    supports-heat: bool,
+    supports-cool: bool,
+    supports-auto: bool,
+}
+
+export struct MediaItem {
+    id: string,
+    name: string,
+    display-label: string,
+    status: string,
+    volume: int,
+    power: bool,
+    muted: bool,
+    mute-known: bool,
+    volume-known: bool,
+    show-channels: bool,
+    supports-last: bool,
+    availability: int,
+    writable: bool,
+    supports-power: bool,
+    supports-volume: bool,
+    supports-mute: bool,
+    supports-settings: bool,
+    supports-voice: bool,
+    supports-inputs: bool,
+    supports-up: bool,
+    supports-down: bool,
+    supports-left: bool,
+    supports-right: bool,
+    supports-select: bool,
+    supports-back: bool,
+    supports-home: bool,
+    supports-play-pause: bool,
+    supports-channel-up: bool,
+    supports-channel-down: bool,
+    supports-volume-up: bool,
+    supports-volume-down: bool,
+    supports-mute-action: bool,
+    supports-apps: bool,
+}
+
+export enum MediaAppSymbol { generic, netflix, youtube, youtube-tv, prime-video }
+
+export struct MediaAppItem {
+    media-id: string,
+    id: string,
+    label: string,
+    symbol: MediaAppSymbol,
+}
+
+export struct ShadeItem {
+    id: string,
+    name: string,
+    status: string,
+    position: int,
+    availability: int,
+    writable: bool,
+    supports-open: bool,
+    supports-close: bool,
+    supports-stop: bool,
+}
+
+export struct CameraItem {
+    id: string,
+    name: string,
+    preview-reference: string,
+    status: string,
+    availability: int,
+    doorbell: bool,
+    motion: bool,
+    person: bool,
+    package: bool,
+    supports-doorbell: bool,
+    supports-motion: bool,
+    supports-person: bool,
+    supports-package: bool,
+}
+
+export enum ChoiceSymbol { none, airflow-down, airflow-up }
+
+export struct GenericChoiceItem {
+    id: string,
+    label: string,
+    selected: bool,
+    symbol: ChoiceSymbol,
+}
+
+export enum ControlRole { generic, fan-speed, fan-direction, power-off }
+
+export struct GenericControlItem {
+    id: string,
+    handle: string,
+    kind: int,
+    role: ControlRole,
+    has-value: bool,
+    label: string,
+    value-text: string,
+    unit-label: string,
+    bool-value: bool,
+    number-value: float,
+    minimum: float,
+    maximum: float,
+    step: float,
+    writable: bool,
+    availability: int,
+    needs-attention: bool,
+    treatment: int,
+    choices: [GenericChoiceItem],
+}
+
+export struct GenericObjectItem {
+    id: string,
+    name: string,
+    display-label: string,
+    primary-index: int,
+    off-index: int,
+    direction-index: int,
+    controls: [GenericControlItem],
+}
+
+export struct NetworkItem {
+    id: string,
+    name: string,
+    security: string,
+    signal: int,
+    connected: bool,
+}

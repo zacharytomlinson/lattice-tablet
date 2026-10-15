@@ -1,0 +1,35 @@
+From 53ce44f014eeb8a665bb4ad6bf0d78452728c45b Mon Sep 17 00:00:00 2001
+From: Jarvis Tablet <jarvis-tablet@localhost>
+Date: Sun, 9 Aug 2026 18:10:00 -0500
+Subject: [PATCH] HID: i2c-hid: acpi: bind StarLite Goodix vendor ID
+
+Upstream-Status: Inappropriate [legacy firmware compatibility]
+
+Older StarLite Mk V coreboot releases incorrectly use GXTP7386 as both
+the HID and CID of the Goodix HID-over-I2C touchscreen. The generic
+i2c-hid ACPI driver therefore does not bind because it normally matches
+the PNP0C50 compatible ID.
+
+Star Labs corrected the firmware declaration in coreboot commit
+fce8c104e13c205f9c15a89d2c1b5b0aa0189929. Accept the old vendor ID as
+a compatibility entry so installed firmware continues to expose touch.
+
+Signed-off-by: Jarvis Tablet <jarvis-tablet@localhost>
+---
+ drivers/hid/i2c-hid/i2c-hid-acpi.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/hid/i2c-hid/i2c-hid-acpi.c b/drivers/hid/i2c-hid/i2c-hid-acpi.c
+index ac918a9e260c..43d45e5c4a78 100644
+--- a/drivers/hid/i2c-hid/i2c-hid-acpi.c
++++ b/drivers/hid/i2c-hid/i2c-hid-acpi.c
+@@ -111,6 +111,7 @@ static int i2c_hid_acpi_probe(struct i2c_client *client)
+ static const struct acpi_device_id i2c_hid_acpi_match[] = {
+ 	{ "ACPI0C50" },
+ 	{ "PNP0C50" },
++	{ "GXTP7386" },
+ 	{ }
+ };
+ MODULE_DEVICE_TABLE(acpi, i2c_hid_acpi_match);
+-- 
+2.50.1

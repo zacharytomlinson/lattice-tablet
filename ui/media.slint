@@ -1,0 +1,416 @@
+import { DiscreteLevel } from "discrete_level.slint";
+import { DeviceSettingsButton } from "common_controls.slint";
+import { MediaAppItem, MediaAppSymbol, MediaItem } from "models.slint";
+import { Theme, Glyph, ActivationSurface } from "foundation.slint";
+
+// A touch target remains generous without drawing a physical button around it.
+component MediaAction inherits Rectangle {
+    in property <image> icon;
+    in property <bool> has-icon: true;
+    in property <string> label;
+    in property <string> accessible-name: root.label;
+    in property <bool> stacked;
+    in property <bool> enabled: true;
+    in property <bool> active;
+    callback clicked;
+    min-width: 44px;
+    height: root.stacked ? 76px : 44px;
+    background: transparent;
+    border-radius: 3px;
+    opacity: root.enabled ? 1 : 0.3;
+    accessible-role: button;
+    accessible-label: root.accessible-name;
+    accessible-enabled: root.enabled;
+    accessible-checked: root.active;
+    accessible-action-default => { if (root.enabled) { root.clicked(); } }
+
+    treatment := ActivationSurface {
+        width: parent.width; height: parent.height;
+        active: root.active; pressed: touch.pressed; hovered: touch.has-hover;
+    }
+
+    if root.stacked : VerticalLayout {
+        padding-top: 10px;
+        padding-bottom: 10px;
+        spacing: 12px;
+        alignment: center;
+        Rectangle {
+            height: 22px;
+            background: transparent;
+            Glyph {
+                source: root.icon;
+                tint: treatment.icon-ink;
+                width: 22px;
+                height: 22px;
+                x: (parent.width - self.width) / 2;
+            }
+        }
+        Text {
+            text: root.label;
+            color: touch.pressed ? treatment.label-ink : Theme.text-muted;
+            font-size: 12px;
+            horizontal-alignment: center;
+        }
+    }
+    if !root.stacked : HorizontalLayout {
+        padding-left: 10px;
+        padding-right: 10px;
+        spacing: root.label != "" && root.has-icon ? 9px : 0px;
+        alignment: center;
+        if root.has-icon : Rectangle {
+            width: 22px;
+            background: transparent;
+            Glyph {
+                source: root.icon;
+                tint: treatment.icon-ink;
+                width: 21px;
+                height: 21px;
+                y: (parent.height - self.height) / 2;
+            }
+        }
+        if root.label != "" : Text {
+            text: root.label;
+            color: root.active || touch.pressed ? treatment.label-ink : Theme.text-muted;
+            font-size: 13px;
+            font-weight: root.has-icon ? 400 : 500;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+    }
+    touch := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: self.enabled ? pointer : default;
+        clicked => { root.clicked(); }
+    }
+}
+
+component MediaNavigation inherits Rectangle {
+    in property <MediaItem> media;
+    callback invoked(string);
+    width: 144px;
+    height: 144px;
+    background: transparent;
+    MediaAction {
+        x: 50px; y: 2px; width: 44px;
+        icon: @image-url("../assets/icons/chevron-up.svg");
+        accessible-name: "Navigate up";
+        enabled: root.media.writable && root.media.supports-up;
+        clicked => { root.invoked("home.media.navigate-up"); }
+    }
+    MediaAction {
+        x: 2px; y: 50px; width: 44px;
+        icon: @image-url("../assets/icons/chevron-left.svg");
+        accessible-name: "Navigate left";
+        enabled: root.media.writable && root.media.supports-left;
+        clicked => { root.invoked("home.media.navigate-left"); }
+    }
+    MediaAction {
+        x: 50px; y: 50px; width: 44px;
+        has-icon: false; label: "OK"; accessible-name: "Select";
+        enabled: root.media.writable && root.media.supports-select;
+        clicked => { root.invoked("home.media.select"); }
+    }
+    MediaAction {
+        x: 98px; y: 50px; width: 44px;
+        icon: @image-url("../assets/icons/chevron-right.svg");
+        accessible-name: "Navigate right";
+        enabled: root.media.writable && root.media.supports-right;
+        clicked => { root.invoked("home.media.navigate-right"); }
+    }
+    MediaAction {
+        x: 50px; y: 98px; width: 44px;
+        icon: @image-url("../assets/icons/chevron-down.svg");
+        accessible-name: "Navigate down";
+        enabled: root.media.writable && root.media.supports-down;
+        clicked => { root.invoked("home.media.navigate-down"); }
+    }
+}
+
+component MediaActions inherits Rectangle {
+    in property <MediaItem> media;
+    callback invoked(string);
+    min-width: 372px;
+    preferred-width: 416px;
+    max-width: 416px;
+    height: 76px;
+    background: transparent;
+    HorizontalLayout {
+        spacing: 24px;
+        MediaAction {
+            stacked: true;
+            icon: @image-url("../assets/icons/undo-2.svg"); label: "Last";
+            enabled: root.media.writable && root.media.supports-last;
+            clicked => { root.invoked("home.media.last"); }
+        }
+        MediaAction {
+            stacked: true;
+            icon: @image-url("../assets/icons/chevron-left.svg"); label: "Back";
+            enabled: root.media.writable && root.media.supports-back;
+            clicked => { root.invoked("home.media.back"); }
+        }
+        MediaAction {
+            stacked: true;
+            icon: @image-url("../assets/icons/house.svg"); label: "Home";
+            enabled: root.media.writable && root.media.supports-home;
+            clicked => { root.invoked("home.media.home"); }
+        }
+        MediaAction {
+            stacked: true;
+            min-width: 80px;
+            icon: @image-url("../assets/icons/play-pause.svg"); label: "Play / pause";
+            enabled: root.media.writable && root.media.supports-play-pause;
+            clicked => { root.invoked("home.media.play-pause"); }
+        }
+        MediaAction {
+            stacked: true;
+            min-width: 64px;
+            icon: @image-url("../assets/icons/settings.svg"); label: "Settings";
+            enabled: root.media.writable && root.media.supports-settings;
+            clicked => { root.invoked("home.media.settings"); }
+        }
+    }
+}
+
+component MediaAppLink inherits Rectangle {
+    in property <MediaAppItem> application;
+    in property <bool> enabled;
+    in property <bool> show-label: true;
+    callback clicked;
+    min-width: root.show-label ? 112px : 52px;
+    max-width: root.show-label ? 176px : 76px;
+    height: 52px;
+    background: transparent;
+    border-radius: 3px;
+    opacity: root.enabled ? 1 : 0.35;
+    accessible-role: button;
+    accessible-label: "Open " + root.application.label;
+    accessible-enabled: root.enabled;
+    accessible-action-default => { if (root.enabled) { root.clicked(); } }
+    treatment := ActivationSurface {
+        width: parent.width; height: parent.height;
+        pressed: touch.pressed; hovered: touch.has-hover;
+    }
+    HorizontalLayout {
+        padding-left: 12px;
+        padding-right: 12px;
+        spacing: root.show-label ? 16px : 0px;
+        alignment: center;
+        Rectangle {
+            width: 24px;
+            background: transparent;
+            Glyph {
+                tint: Theme.text-muted;
+                source: root.application.symbol == MediaAppSymbol.youtube
+                    ? @image-url("../assets/icons/provider-youtube.svg")
+                    : root.application.symbol == MediaAppSymbol.youtube-tv
+                    ? @image-url("../assets/icons/provider-youtube-tv.svg")
+                    : root.application.symbol == MediaAppSymbol.netflix
+                    ? @image-url("../assets/icons/provider-netflix.svg")
+                    : root.application.symbol == MediaAppSymbol.prime-video
+                    ? @image-url("../assets/icons/provider-prime-video.svg")
+                    : @image-url("../assets/icons/provider-app.svg");
+                width: 24px;
+                height: 24px;
+                y: (parent.height - self.height) / 2;
+                image-fit: contain;
+            }
+        }
+        if root.show-label : Text {
+            text: root.application.label;
+            color: Theme.text-muted;
+            font-size: 12px;
+            vertical-alignment: center;
+        }
+    }
+    touch := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: self.enabled ? pointer : default;
+        clicked => { root.clicked(); }
+    }
+}
+
+export component MediaControl inherits Rectangle {
+    in property <MediaItem> media;
+    in property <bool> compact;
+    in property <bool> show-app-labels: true;
+    in property <bool> can-edit;
+    in property <[MediaAppItem]> apps;
+    callback edit-device(string);
+    callback set-power(string, bool);
+    callback set-volume(string, int);
+    callback set-muted(string, bool);
+    callback invoke-action(string, string);
+    callback launch-app(string, string);
+    accessible-role: groupbox;
+    accessible-label: root.media.name;
+    height: content.preferred-height;
+    background: Theme.surface;
+    border-width: 1px;
+    border-color: root.media.availability == 2 ? Theme.warning : Theme.line;
+    border-radius: 4px;
+
+    content := VerticalLayout {
+        alignment: start;
+        padding-left: 20px;
+        padding-right: 20px;
+        padding-top: 16px;
+        padding-bottom: 16px;
+        spacing: 16px;
+
+        HorizontalLayout {
+            height: 44px;
+            spacing: 10px;
+            DeviceSettingsButton {
+                icon: @image-url("../assets/icons/tv.svg");
+                accessible-label: "Settings for " + root.media.name;
+                enabled: root.can-edit;
+                clicked => { root.edit-device(root.media.id); }
+            }
+            Text {
+                text: root.media.display-label != "" ? root.media.display-label : "Television";
+                color: Theme.text-muted;
+                font-size: 14px;
+                vertical-alignment: center;
+            }
+            if root.media.status != "On" && root.media.status != "Off" : Text {
+                text: root.media.status;
+                color: root.media.availability == 2 ? Theme.warning : Theme.text-muted;
+                font-size: 11px;
+                vertical-alignment: center;
+            }
+            Rectangle { horizontal-stretch: 1; background: transparent; }
+            if root.media.supports-power : MediaAction {
+                width: 70px;
+                icon: @image-url("../assets/icons/power.svg");
+                label: root.media.power ? "On" : "Off";
+                active: root.media.power;
+                accessible-name: (root.media.power ? "Turn off " : "Turn on ") + root.media.name;
+                enabled: root.media.writable;
+                clicked => { root.set-power(root.media.id, !root.media.power); }
+            }
+        }
+
+        HorizontalLayout {
+            height: 144px;
+            spacing: 32px;
+            alignment: center;
+            MediaNavigation {
+                media: root.media;
+                invoked(action) => { root.invoke-action(root.media.id, action); }
+            }
+            if !root.compact : Rectangle {
+                width: 1px;
+                height: 144px;
+                background: transparent;
+                Rectangle { y: 34px; width: 1px; height: 76px; background: Theme.line; }
+            }
+            if !root.compact : Rectangle {
+                width: 416px;
+                height: 144px;
+                background: transparent;
+                MediaActions {
+                    width: parent.width;
+                    y: 34px;
+                    media: root.media;
+                    invoked(action) => { root.invoke-action(root.media.id, action); }
+                }
+            }
+        }
+        if root.compact : HorizontalLayout {
+            height: 76px;
+            alignment: center;
+            MediaActions {
+                media: root.media;
+                invoked(action) => { root.invoke-action(root.media.id, action); }
+            }
+        }
+
+        if root.media.show-channels && (root.media.supports-channel-down || root.media.supports-channel-up) : HorizontalLayout {
+            height: 44px;
+            spacing: 12px;
+            alignment: center;
+            MediaAction {
+                icon: @image-url("../assets/icons/chevron-down.svg"); label: "Channel";
+                accessible-name: "Channel down";
+                enabled: root.media.writable && root.media.supports-channel-down;
+                clicked => { root.invoke-action(root.media.id, "home.media.channel-down"); }
+            }
+            MediaAction {
+                icon: @image-url("../assets/icons/chevron-up.svg"); label: "Channel";
+                accessible-name: "Channel up";
+                enabled: root.media.writable && root.media.supports-channel-up;
+                clicked => { root.invoke-action(root.media.id, "home.media.channel-up"); }
+            }
+        }
+
+        if root.media.supports-volume || root.media.supports-volume-down || root.media.supports-volume-up || root.media.supports-mute || root.media.supports-mute-action : HorizontalLayout {
+            height: 48px;
+            spacing: 12px;
+            MediaAction {
+                width: 48px;
+                accessible-name: !root.media.mute-known ? "Toggle mute" : root.media.muted ? "Unmute" : "Mute";
+                icon: root.media.mute-known && root.media.muted
+                    ? @image-url("../assets/icons/volume-x.svg")
+                    : @image-url("../assets/icons/volume-2.svg");
+                active: root.media.mute-known && root.media.muted;
+                enabled: root.media.writable && (root.media.supports-mute || root.media.supports-mute-action);
+                clicked => {
+                    if (root.media.supports-mute && root.media.mute-known) {
+                        root.set-muted(root.media.id, !root.media.muted);
+                    } else { root.invoke-action(root.media.id, "home.media.mute"); }
+                }
+            }
+            if root.media.volume-known : DiscreteLevel {
+                horizontal-stretch: 1;
+                label: "Volume";
+                binding: root.media.id + (root.media.supports-volume ? ":absolute" : ":relative");
+                model-value: root.media.volume;
+                has-value: root.media.volume-known;
+                minimum: 0; maximum: 100; step: 1;
+                active-color: Theme.text-muted;
+                track-thickness: 2px;
+                enabled: root.media.writable && (root.media.supports-volume || (root.media.supports-volume-down && root.media.supports-volume-up));
+                track-writable: root.media.supports-volume;
+                selected(volume) => {
+                    if (root.media.supports-volume) { root.set-volume(root.media.id, volume); }
+                    else if (volume != root.media.volume) {
+                        root.invoke-action(root.media.id, volume > root.media.volume ? "home.media.volume-up" : "home.media.volume-down");
+                    }
+                }
+            }
+            if !root.media.volume-known : HorizontalLayout {
+                spacing: 8px;
+                MediaAction {
+                    width: 44px;
+                    icon: @image-url("../assets/icons/chevron-left.svg"); accessible-name: "Volume down";
+                    enabled: root.media.writable && root.media.supports-volume-down;
+                    clicked => { root.invoke-action(root.media.id, "home.media.volume-down"); }
+                }
+                Text {
+                    text: "Volume"; horizontal-stretch: 1;
+                    color: Theme.text-muted; font-size: 12px; vertical-alignment: center;
+                }
+                MediaAction {
+                    width: 44px;
+                    icon: @image-url("../assets/icons/chevron-right.svg"); accessible-name: "Volume up";
+                    enabled: root.media.writable && root.media.supports-volume-up;
+                    clicked => { root.invoke-action(root.media.id, "home.media.volume-up"); }
+                }
+            }
+        }
+
+        if root.media.supports-apps : Rectangle { height: 1px; background: Theme.line; }
+        if root.media.supports-apps : HorizontalLayout {
+            height: 52px;
+            spacing: 20px;
+            alignment: center;
+            for application in root.apps : MediaAppLink {
+                visible: application.media-id == root.media.id;
+                application: application;
+                show-label: root.show-app-labels;
+                enabled: root.media.writable;
+                clicked => { root.launch-app(root.media.id, application.id); }
+            }
+        }
+    }
+}

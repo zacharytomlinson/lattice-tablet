@@ -1,0 +1,195 @@
+import { Theme, Glyph } from "foundation.slint";
+
+component LevelNudge inherits Rectangle {
+    in property <image> icon;
+    in property <string> label;
+    in property <bool> enabled;
+    callback clicked;
+    width: 44px;
+    height: 48px;
+    background: touch.pressed ? Theme.surface-raised
+        : touch.has-hover ? Theme.surface-soft : transparent;
+    opacity: root.enabled ? 1 : 0.3;
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-enabled: root.enabled;
+    accessible-action-default => { if (root.enabled) { root.clicked(); } }
+    Glyph {
+        source: root.icon;
+        width: 18px;
+        height: 18px;
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        tint: Theme.text;
+    }
+    touch := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: self.enabled ? pointer : default;
+        clicked => { root.clicked(); }
+    }
+}
+
+// A range of valid levels, optionally preceded by a separate Off action.
+// The owner routes the Off position to its separate command binding.
+export component DiscreteLevel inherits Rectangle {
+    in property <string> label;
+    in property <string> binding;
+    in property <float> model-value;
+    in property <bool> has-value;
+    in property <float> minimum;
+    in property <float> maximum;
+    in property <float> step: 1;
+    in property <bool> includes-off;
+    in property <bool> off-enabled: true;
+    in property <bool> enabled: true;
+    in property <bool> track-writable: true;
+    in property <color> active-color: Theme.activation;
+    in property <length> track-thickness: 3px;
+    out property <bool> dragging;
+    callback started;
+    callback selected(float);
+
+    private property <float> increment: max(0.000001, root.step);
+    private property <int> running-count: max(1, floor((root.maximum - root.minimum) / root.increment) + 1);
+    private property <int> stop-count: root.running-count + (root.includes-off ? 1 : 0);
+    private property <float> visual-value: root.model-value;
+    private property <bool> previewing: false;
+    private property <string> gesture-binding;
+    private property <int> selected-index: root.index-for(root.visual-value);
+
+    function index-for(value: float) -> int {
+        return root.includes-off && value == 0 ? 0
+            : max(0, min(root.running-count - 1, round((value - root.minimum) / root.increment)))
+                + (root.includes-off ? 1 : 0);
+    }
+    function value-at(index: int) -> float {
+        return root.includes-off && index == 0 ? 0
+            : root.minimum + (index - (root.includes-off ? 1 : 0)) * root.increment;
+    }
+    function choose(index: int) {
+        if (!root.enabled || (root.includes-off && index == 0 && !root.off-enabled)) { return; }
+        root.started();
+        root.visual-value = root.value-at(index);
+        root.previewing = true;
+        root.selected(root.visual-value);
+        root.visual-value = root.model-value;
+        root.previewing = false;
+    }
+    changed model-value => {
+        if (!root.dragging) {
+            root.visual-value = root.model-value;
+            root.previewing = false;
+        }
+    }
+    changed binding => {
+        root.dragging = false;
+        root.previewing = false;
+        root.visual-value = root.model-value;
+    }
+
+    height: 48px;
+    min-width: 230px;
+    background: transparent;
+
+    HorizontalLayout {
+        spacing: 8px;
+        Text {
+            width: 32px;
+            text: root.has-value || root.previewing ? round(root.visual-value * 100) / 100 : "—";
+            color: Theme.text;
+            font-size: 23px;
+            font-weight: 300;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+        LevelNudge {
+            icon: @image-url("../assets/icons/chevron-left.svg");
+            label: "Decrease " + root.label;
+            enabled: root.enabled && root.has-value && root.selected-index > 0
+                && (!root.includes-off || root.selected-index > 1 || root.off-enabled);
+            clicked => { root.choose(root.selected-index - 1); }
+        }
+        track := Rectangle {
+            min-width: 96px;
+            horizontal-stretch: 1;
+            height: 48px;
+            background: transparent;
+            opacity: root.enabled ? 1 : 0.4;
+            private property <length> travel: max(1px, self.width - 4px);
+            accessible-role: slider;
+            accessible-label: root.label;
+            accessible-value: root.has-value ? "" + root.model-value : "Unknown";
+            accessible-value-minimum: root.includes-off ? 0 : root.minimum;
+            accessible-value-maximum: root.maximum;
+            accessible-value-step: root.increment;
+            accessible-enabled: root.enabled && root.track-writable;
+            accessible-action-increment => {
+                if (root.has-value && root.selected-index < root.stop-count - 1) { root.choose(root.selected-index + 1); }
+            }
+            accessible-action-decrement => {
+                if (root.has-value && root.selected-index > 0) { root.choose(root.selected-index - 1); }
+            }
+            Rectangle {
+                x: 2px;
+                y: (parent.height - self.height) / 2;
+                width: track.travel;
+                height: root.track-thickness;
+                background: Theme.line-strong;
+                Rectangle {
+                    x: 0px;
+                    y: 0px;
+                    height: parent.height;
+                    width: (root.has-value || root.previewing)
+                        ? parent.width * root.selected-index / max(1, root.stop-count - 1) : 0px;
+                    background: root.active-color;
+                }
+            }
+            touch := TouchArea {
+                enabled: root.enabled && root.track-writable;
+                mouse-cursor: self.enabled ? pointer : default;
+                pointer-event(event) => {
+                    if (event.button != PointerEventButton.left) { return; }
+                    if (event.kind == PointerEventKind.down) {
+                        root.gesture-binding = root.binding;
+                        root.started();
+                        root.dragging = true;
+                        root.previewing = true;
+                        root.visual-value = root.value-at(round(max(0, min(1,
+                            (self.mouse-x - 2px) / track.travel)) * (root.stop-count - 1)));
+                    } else if (event.kind == PointerEventKind.up && root.dragging) {
+                        if (root.gesture-binding != root.binding) {
+                            root.dragging = false;
+                            root.previewing = false;
+                            root.visual-value = root.model-value;
+                            return;
+                        }
+                        root.visual-value = root.value-at(round(max(0, min(1,
+                            (self.mouse-x - 2px) / track.travel)) * (root.stop-count - 1)));
+                        root.dragging = false;
+                        if (root.visual-value != 0 || !root.includes-off || root.off-enabled) {
+                            root.selected(root.visual-value);
+                        }
+                        root.visual-value = root.model-value;
+                        root.previewing = false;
+                    } else if (event.kind == PointerEventKind.cancel) {
+                        root.dragging = false;
+                        root.previewing = false;
+                        root.visual-value = root.model-value;
+                    }
+                }
+                moved => {
+                    if (self.pressed && root.dragging) {
+                        root.visual-value = root.value-at(round(max(0, min(1,
+                            (self.mouse-x - 2px) / track.travel)) * (root.stop-count - 1)));
+                    }
+                }
+            }
+        }
+        LevelNudge {
+            icon: @image-url("../assets/icons/chevron-right.svg");
+            label: "Increase " + root.label;
+            enabled: root.enabled && root.has-value && root.selected-index < root.stop-count - 1;
+            clicked => { root.choose(root.selected-index + 1); }
+        }
+    }
+}

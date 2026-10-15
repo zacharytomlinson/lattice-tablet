@@ -1,0 +1,325 @@
+import { ScrollView } from "std-widgets.slint";
+import { CameraItem, ClimateItem, GenericObjectItem, LightItem, MediaAppItem, MediaItem, ShadeItem } from "models.slint";
+import { Theme, CenteredStatusDot } from "foundation.slint";
+import { CameraControl } from "camera.slint";
+import { ClimateControl } from "climate.slint";
+import { GenericObjectControl } from "generic_object.slint";
+import { LightControl } from "lighting.slint";
+import { MediaControl } from "media.slint";
+import { ShadeControl } from "shade.slint";
+
+export component RoomView inherits Rectangle {
+    in property <bool> can-edit-devices;
+    callback edit-device(string);
+    in property <string> room-name;
+    in property <int> object-count;
+    in property <string> generic-section-name;
+    in property <[LightItem]> lights;
+    in property <[ClimateItem]> climates;
+    in property <[MediaItem]> media;
+    in property <[MediaAppItem]> media-apps;
+    in property <[ShadeItem]> shades;
+    in property <[CameraItem]> cameras;
+    in property <[GenericObjectItem]> generic-objects;
+    in property <string> last-command;
+    in property <int> last-command-state;
+    callback set-light-power(string, bool);
+    callback preview-light-level(string, int);
+    callback set-light-level(string, int);
+    callback set-climate-setpoint(string, float);
+    callback set-climate-mode(string, string);
+    callback set-media-power(string, bool);
+    callback set-media-volume(string, int);
+    callback set-media-mute(string, bool);
+    callback invoke-media-action(string, string);
+    callback launch-media-app(string, string);
+    callback set-shade-position(string, int);
+    callback invoke-shade-action(string, string);
+    callback view-camera-preview(string);
+    callback set-generic-binary(string, bool);
+    callback set-generic-number(string, float);
+    callback step-generic-number(string, float);
+    callback select-generic-choice(string, string);
+    callback invoke-generic-action(string);
+    callback submit-generic-text(string, string);
+
+    background: transparent;
+
+    ScrollView {
+        mouse-drag-pan-enabled: true;
+        width: parent.width;
+        height: parent.height;
+        viewport-width: self.width;
+        viewport-height: max(self.visible-height, content.preferred-height);
+
+        content := VerticalLayout {
+            alignment: start;
+            padding-left: root.width < 780px ? 22px : Theme.content-pad;
+            padding-right: root.width < 780px ? 22px : Theme.content-pad;
+            padding-top: 28px;
+            padding-bottom: 34px;
+            spacing: 22px;
+
+            VerticalLayout {
+                height: 64px;
+                alignment: center;
+                spacing: 4px;
+
+                Text {
+                    text: root.room-name;
+                    color: Theme.text;
+                    font-size: 30px;
+                    font-weight: 300;
+                }
+
+                Text {
+                    text: root.object-count == 1
+                        ? "1 control"
+                        : root.object-count + " controls";
+                    color: Theme.text-muted;
+                    font-size: 12px;
+                }
+            }
+
+            if root.cameras.length > 0 : VerticalLayout {
+                spacing: 12px;
+
+                HorizontalLayout {
+                    height: 42px;
+
+                    Text {
+                        text: "Entry";
+                        color: Theme.text;
+                        font-size: 20px;
+                        font-weight: 600;
+                        vertical-alignment: center;
+                    }
+
+                    Text {
+                        text: "CAMERA / DETECTIONS";
+                        color: Theme.text-muted;
+                        font-size: 10px;
+                        font-weight: 500;
+                        horizontal-alignment: right;
+                        vertical-alignment: center;
+                    }
+                }
+
+                for camera in root.cameras : CameraControl {
+                    camera: camera;
+                    can-edit: root.can-edit-devices;
+                    edit-device(id) => { root.edit-device(id); }
+                    compact: root.width < 780px;
+                    view-preview(name) => { root.view-camera-preview(name); }
+                }
+            }
+
+            if root.lights.length > 0 : VerticalLayout {
+                spacing: 12px;
+
+                HorizontalLayout {
+                    height: 42px;
+
+                    Text {
+                        text: "Lighting";
+                        color: Theme.text;
+                        font-size: 20px;
+                        font-weight: 600;
+                        vertical-alignment: center;
+                    }
+
+                    Text {
+                        text: "LEVEL / POWER";
+                        color: Theme.text-muted;
+                        font-size: 10px;
+                        font-weight: 500;
+                        horizontal-alignment: right;
+                        vertical-alignment: center;
+                    }
+                }
+
+                for light in root.lights : LightControl {
+                    light: light;
+                    can-edit: root.can-edit-devices;
+                    edit-device(id) => { root.edit-device(id); }
+                    set-power(id, on) => { root.set-light-power(id, on); }
+                    preview-level(id, level) => { root.preview-light-level(id, level); }
+                    set-level(id, level) => { root.set-light-level(id, level); }
+                }
+            }
+
+            if root.climates.length > 0 : VerticalLayout {
+                spacing: 12px;
+
+                HorizontalLayout {
+                    height: 42px;
+
+                    Text {
+                        text: "Climate";
+                        color: Theme.text;
+                        font-size: 20px;
+                        font-weight: 600;
+                        vertical-alignment: center;
+                    }
+
+                    Text {
+                        text: "TEMPERATURE / MODE";
+                        color: Theme.text-muted;
+                        font-size: 10px;
+                        font-weight: 500;
+                        horizontal-alignment: right;
+                        vertical-alignment: center;
+                    }
+                }
+
+                for climate in root.climates : ClimateControl {
+                    climate: climate;
+                    can-edit: root.can-edit-devices;
+                    edit-device(id) => { root.edit-device(id); }
+                    set-setpoint(id, value) => { root.set-climate-setpoint(id, value); }
+                    set-mode(id, mode) => { root.set-climate-mode(id, mode); }
+                }
+            }
+
+            if root.media.length > 0 : VerticalLayout {
+                spacing: 12px;
+
+                HorizontalLayout {
+                    height: 42px;
+
+                    Text {
+                        text: "Media";
+                        color: Theme.text;
+                        font-size: 20px;
+                        font-weight: 600;
+                        vertical-alignment: center;
+                    }
+
+                }
+
+                for media in root.media : MediaControl {
+                    media: media;
+                    compact: root.width < 740px;
+                    show-app-labels: root.width >= 600px;
+                    can-edit: root.can-edit-devices;
+                    edit-device(id) => { root.edit-device(id); }
+                    apps: root.media-apps;
+                    set-power(id, on) => { root.set-media-power(id, on); }
+                    set-volume(id, volume) => { root.set-media-volume(id, volume); }
+                    set-muted(id, muted) => { root.set-media-mute(id, muted); }
+                    invoke-action(id, action) => { root.invoke-media-action(id, action); }
+                    launch-app(id, application) => { root.launch-media-app(id, application); }
+                }
+            }
+
+            if root.shades.length > 0 : VerticalLayout {
+                spacing: 12px;
+
+                HorizontalLayout {
+                    height: 42px;
+
+                    Text {
+                        text: "Shades";
+                        color: Theme.text;
+                        font-size: 20px;
+                        font-weight: 600;
+                        vertical-alignment: center;
+                    }
+
+                    Text {
+                        text: "POSITION / MOVEMENT";
+                        color: Theme.text-muted;
+                        font-size: 10px;
+                        font-weight: 500;
+                        horizontal-alignment: right;
+                        vertical-alignment: center;
+                    }
+                }
+
+                for shade in root.shades : ShadeControl {
+                    shade: shade;
+                    can-edit: root.can-edit-devices;
+                    edit-device(id) => { root.edit-device(id); }
+                    set-position(id, position) => { root.set-shade-position(id, position); }
+                    invoke-action(id, action) => { root.invoke-shade-action(id, action); }
+                }
+            }
+
+            if root.generic-objects.length > 0 : VerticalLayout {
+                spacing: 12px;
+
+                HorizontalLayout {
+                    height: 42px;
+
+                    Text {
+                        text: root.generic-section-name;
+                        color: Theme.text;
+                        font-size: 20px;
+                        font-weight: 600;
+                        vertical-alignment: center;
+                    }
+
+                }
+
+                for object in root.generic-objects : GenericObjectControl {
+                    object: object;
+                    can-edit: root.can-edit-devices;
+                    edit-device(id) => { root.edit-device(id); }
+                    set-binary(handle, value) => { root.set-generic-binary(handle, value); }
+                    set-number(handle, value) => { root.set-generic-number(handle, value); }
+                    step-number(handle, value) => { root.step-generic-number(handle, value); }
+                    select-choice(handle, choice) => { root.select-generic-choice(handle, choice); }
+                    invoke-action(handle) => { root.invoke-generic-action(handle); }
+                    submit-text(handle, value) => { root.submit-generic-text(handle, value); }
+                }
+            }
+
+            if root.lights.length + root.climates.length + root.media.length
+                + root.shades.length + root.cameras.length
+                + root.generic-objects.length == 0 : Rectangle {
+                height: 110px;
+                background: Theme.surface;
+                border-radius: 6px;
+                border-width: 1px;
+                border-color: Theme.line;
+
+                Text {
+                    x: 18px;
+                    width: parent.width - 36px;
+                    text: "No controls are available in this room.";
+                    color: Theme.text-muted;
+                    font-size: 13px;
+                    vertical-alignment: center;
+                }
+            }
+        }
+    }
+
+    if root.last-command-state == 4 : Rectangle {
+        x: root.width < 780px ? 22px : Theme.content-pad;
+        y: parent.height - self.height - 22px;
+        width: parent.width - 2 * self.x;
+        height: max(22px, command-message.preferred-height) + 24px;
+        background: Theme.surface-soft;
+        border-radius: 6px;
+        border-width: 1px;
+        border-color: #51342a;
+
+        HorizontalLayout {
+            padding-left: 18px;
+            padding-right: 18px;
+            spacing: 12px;
+
+            CenteredStatusDot { alert: true; }
+
+            command-message := Text {
+                text: root.last-command;
+                horizontal-stretch: 1;
+                color: Theme.warning;
+                font-size: 12px;
+                vertical-alignment: center;
+                wrap: word-wrap;
+            }
+        }
+    }
+}

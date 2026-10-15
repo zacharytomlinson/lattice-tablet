@@ -1,0 +1,284 @@
+export global Theme {
+    out property <color> canvas: #121513;
+    out property <color> rail: #0d100f;
+    out property <color> surface: #1b1d1c66;
+    out property <color> surface-soft: #202522;
+    out property <color> surface-raised: #282e2a;
+    out property <color> line: #dddfd914;
+    out property <color> line-strong: #48514b;
+    out property <color> text: #f2f1eb;
+    out property <color> text-muted: #ced0ca;
+    // Engagement is violet. Peach and blue describe thermal meaning only.
+    out property <color> activation: #d1c7f2;
+    out property <color> activation-bright: Theme.activation.mix(#ffffff, 0.55);
+    out property <color> activation-soft: Theme.activation.with-alpha(0.08);
+    out property <color> activation-hover: Theme.activation.with-alpha(0.12);
+    out property <color> activation-pressed: Theme.activation.with-alpha(0.17);
+    out property <color> control-idle: #a8b3b8;
+    out property <color> control-hover: #ffffff08;
+    out property <color> control-pressed: #ffffff14;
+    out property <color> identity-ink: Theme.text-muted;
+    out property <color> warm: #f2b09a;
+    out property <color> warm-soft: Theme.warm.with-alpha(0.08);
+    out property <color> cool: #9ddcf5;
+    out property <color> cool-soft: Theme.cool.with-alpha(0.08);
+    out property <color> success: #8eaa98;
+    out property <color> warning: #d78162;
+    out property <color> shadow: #00000000;
+    out property <length> content-pad: 40px;
+    out property <length> touch-target: 44px;
+    out property <length> power-target: 48px;
+    out property <length> control-label-size: 12px;
+    out property <length> control-icon-size: 20px;
+    out property <length> control-radius: 4px;
+    out property <length> activation-edge-width: 1px;
+}
+
+// Identity and settings affordances intentionally have no persistent active
+// state. Pointer feedback stays neutral rather than borrowing activation ink.
+export component NeutralSurface inherits Rectangle {
+    in property <bool> pressed;
+    in property <bool> hovered;
+    background: root.pressed ? Theme.control-pressed
+        : root.hovered ? Theme.control-hover : transparent;
+    border-radius: Theme.control-radius;
+}
+
+// Shared engagement treatment: light in the etched detail, a fine edge, and
+// a translucent wash. This does not own or infer the control's state.
+export component ActivationSurface inherits Rectangle {
+    in property <bool> active;
+    in property <bool> pressed;
+    in property <bool> hovered;
+    in property <bool> vertical-edge;
+    in property <length> edge-inset: 12px;
+    out property <color> icon-ink: root.active || root.pressed
+        ? Theme.activation-bright : Theme.control-idle;
+    out property <color> label-ink: root.active || root.pressed
+        ? Theme.activation : Theme.control-idle;
+    background: root.pressed ? Theme.activation-pressed
+        : root.active ? (root.hovered ? Theme.activation-hover : Theme.activation-soft)
+        : root.hovered ? Theme.control-hover : transparent;
+    border-radius: Theme.control-radius;
+    if root.active || root.pressed : Rectangle {
+        x: root.vertical-edge ? 0px : root.edge-inset;
+        y: root.vertical-edge ? root.edge-inset : parent.height - Theme.activation-edge-width;
+        width: root.vertical-edge ? Theme.activation-edge-width : max(0px, parent.width - root.edge-inset * 2);
+        height: root.vertical-edge ? max(0px, parent.height - root.edge-inset * 2) : Theme.activation-edge-width;
+        background: Theme.activation;
+    }
+}
+
+// One stationary field of light behind the shell and every primary screen.
+// Generate each orientation at native panel resolution so the final sub-LSB
+// dither remains a physical-pixel detail. See assets/backgrounds/generate.py.
+export component AtmosphereBackdrop inherits Rectangle {
+    background: #0a0e0e;
+    clip: true;
+
+    Image {
+        // Background artwork must not contribute an intrinsic window size.
+        preferred-width: 0px;
+        preferred-height: 0px;
+        source: root.width >= root.height
+            ? @image-url("../assets/backgrounds/atmosphere-landscape.png")
+            : @image-url("../assets/backgrounds/atmosphere-portrait.png");
+        image-fit: fill;
+        width: parent.width;
+        height: parent.height;
+    }
+}
+
+export component Glyph inherits Image {
+    in property <color> tint: Theme.text-muted;
+    colorize: tint;
+    image-fit: contain;
+}
+
+// An appliance identity cannot accidentally acquire a power/selection tint.
+export component IdentityGlyph inherits Rectangle {
+    in property <image> icon;
+    in property <length> glyph-size: Theme.control-icon-size;
+    width: root.glyph-size;
+    height: root.glyph-size;
+    background: transparent;
+    Glyph {
+        width: parent.width; height: parent.height;
+        source: root.icon;
+        tint: Theme.identity-ink;
+    }
+}
+
+export component CenteredGlyph inherits Rectangle {
+    in property <image> icon;
+    in property <color> tint: Theme.text-muted;
+    in property <length> glyph-size: 20px;
+
+    width: glyph-size;
+    min-height: glyph-size;
+    vertical-stretch: 1;
+    background: transparent;
+
+    Glyph {
+        source: root.icon;
+        tint: root.tint;
+        width: root.glyph-size;
+        height: root.glyph-size;
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+    }
+}
+
+export component CenteredIconPlate inherits Rectangle {
+    in property <image> icon;
+    in property <color> tint: Theme.text-muted;
+    in property <color> plate-color: Theme.surface-raised;
+    in property <length> plate-size: 40px;
+    in property <length> glyph-size: 19px;
+    in property <length> radius: 5px;
+
+    width: plate-size;
+    min-height: plate-size;
+    vertical-stretch: 1;
+    background: transparent;
+
+    Rectangle {
+        width: root.plate-size;
+        height: root.plate-size;
+        y: (parent.height - self.height) / 2;
+        border-radius: root.radius;
+        background: root.plate-color;
+        border-width: 1px;
+        border-color: Theme.line;
+
+        Glyph {
+            source: root.icon;
+            tint: root.tint;
+            width: root.glyph-size;
+            height: root.glyph-size;
+            x: (parent.width - self.width) / 2;
+            y: (parent.height - self.height) / 2;
+        }
+    }
+}
+
+export component CenteredIconAction inherits Rectangle {
+    in property <image> icon;
+    in property <string> accessible-name;
+    in property <bool> enabled: true;
+    in property <bool> active: false;
+    in property <length> plate-size: Theme.touch-target;
+    in property <length> glyph-size: 18px;
+    callback clicked;
+
+    width: root.plate-size;
+    min-height: root.plate-size;
+    vertical-stretch: 1;
+    background: transparent;
+    opacity: root.enabled ? 1 : 0.4;
+    accessible-role: button;
+    accessible-label: root.accessible-name;
+
+    plate := Rectangle {
+        width: root.plate-size;
+        height: root.plate-size;
+        y: (parent.height - self.height) / 2;
+        background: transparent;
+        treatment := ActivationSurface {
+            width: parent.width; height: parent.height;
+            active: root.active; pressed: touch.pressed; hovered: touch.has-hover;
+        }
+
+        Glyph {
+            source: root.icon;
+            tint: treatment.icon-ink;
+            width: root.glyph-size;
+            height: root.glyph-size;
+            x: (parent.width - self.width) / 2;
+            y: (parent.height - self.height) / 2;
+        }
+    }
+
+    touch := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+export component NavItem inherits Rectangle {
+    in property <image> icon;
+    in property <string> label;
+    in property <bool> active;
+    in property <bool> show-label: true;
+    callback clicked;
+
+    height: 52px;
+    background: transparent;
+    border-radius: 4px;
+    accessible-role: button;
+    accessible-label: root.label;
+    animate background { duration: 120ms; easing: ease-out; }
+
+    treatment := ActivationSurface {
+        width: parent.width; height: parent.height;
+        active: root.active; pressed: touch.pressed; hovered: touch.has-hover;
+        vertical-edge: true; edge-inset: 10px;
+    }
+
+    HorizontalLayout {
+        padding-left: root.show-label ? 16px : (parent.width - 20px) / 2;
+        padding-right: root.show-label ? 12px : (parent.width - 20px) / 2;
+        spacing: root.show-label ? 13px : 0px;
+        alignment: root.show-label ? start : center;
+
+        CenteredGlyph {
+            icon: root.icon;
+            tint: treatment.icon-ink;
+            glyph-size: 19px;
+        }
+
+        if root.show-label : Text {
+            text: root.label;
+            color: root.active ? Theme.text : Theme.text-muted;
+            font-size: 14px;
+            font-weight: root.active ? 600 : 400;
+            vertical-alignment: center;
+        }
+    }
+
+    touch := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+component StatusDot inherits Rectangle {
+    in property <bool> alert;
+    width: 8px;
+    height: 8px;
+    border-radius: 4px;
+    background: alert ? Theme.warning : Theme.success;
+}
+
+export component CenteredStatusDot inherits Rectangle {
+    in property <bool> alert;
+
+    width: 8px;
+    min-height: 8px;
+    vertical-stretch: 1;
+    background: transparent;
+
+    StatusDot {
+        alert: root.alert;
+        y: (parent.height - self.height) / 2;
+    }
+}
+
+export component EdgeBackGesture inherits SwipeGestureHandler {
+    callback requested;
+
+    width: 36px;
+    handle-swipe-right: true;
+    swiped => { root.requested(); }
+}

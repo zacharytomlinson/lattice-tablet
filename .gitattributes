@@ -1,0 +1,2 @@
+# Preserve imported patch context and email signatures verbatim.
+*.patch -whitespace

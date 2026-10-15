@@ -1,0 +1,282 @@
+import { Theme, Glyph, IdentityGlyph, NeutralSurface, ActivationSurface } from "foundation.slint";
+
+export component PowerButton inherits Rectangle {
+    in property <bool> checked;
+    in property <string> accessible-name: root.checked ? "Turn off" : "Turn on";
+    in property <bool> enabled: true;
+    callback toggled(bool);
+
+    accessible-role: button;
+    accessible-label: root.accessible-name;
+    accessible-enabled: root.enabled;
+    width: Theme.power-target;
+    height: Theme.power-target;
+    border-radius: Theme.control-radius;
+    background: transparent;
+    opacity: enabled ? 1 : 0.42;
+    animate background, border-color { duration: 120ms; easing: ease-out; }
+
+    treatment := ActivationSurface {
+        width: parent.width; height: parent.height;
+        active: root.checked; pressed: touch.pressed; hovered: touch.has-hover;
+        edge-inset: 14px;
+    }
+
+    Glyph {
+        source: @image-url("../assets/icons/power.svg");
+        tint: treatment.icon-ink;
+        width: Theme.control-icon-size;
+        height: Theme.control-icon-size;
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+    }
+
+    touch := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => { root.toggled(!root.checked); }
+    }
+}
+
+export component StepButton inherits Rectangle {
+    in property <image> icon;
+    in property <bool> enabled: true;
+    callback clicked;
+
+    width: Theme.touch-target;
+    height: Theme.touch-target;
+    border-radius: Theme.control-radius;
+    background: Theme.surface-soft;
+    treatment := ActivationSurface {
+        width: parent.width; height: parent.height;
+        pressed: touch.pressed; hovered: touch.has-hover;
+    }
+    border-width: 1px;
+    border-color: Theme.line-strong;
+    opacity: root.enabled ? 1 : 0.4;
+    animate background { duration: 100ms; easing: ease-out; }
+
+    Glyph {
+        source: root.icon;
+        tint: treatment.icon-ink;
+        width: 18px;
+        height: 18px;
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+    }
+
+    touch := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+export component ModeButton inherits Rectangle {
+    in property <string> label;
+    in property <bool> active;
+    in property <bool> enabled: true;
+    callback clicked;
+
+    height: Theme.touch-target;
+    border-radius: Theme.control-radius;
+    background: transparent;
+    opacity: root.enabled ? 1 : 0.4;
+    animate background, border-color { duration: 100ms; easing: ease-out; }
+
+    treatment := ActivationSurface {
+        width: parent.width; height: parent.height;
+        active: root.active; pressed: touch.pressed; hovered: touch.has-hover;
+    }
+
+    Text {
+        text: root.label;
+        color: treatment.label-ink;
+        font-size: Theme.control-label-size;
+        font-weight: root.active ? 600 : 500;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+
+    touch := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+export component ActionIconButton inherits Rectangle {
+    in property <image> icon;
+    in property <string> label;
+    in property <bool> enabled: true;
+    callback clicked;
+
+    min-width: 96px;
+    height: 42px;
+    border-radius: 5px;
+    background: Theme.surface-soft;
+    treatment := ActivationSurface {
+        width: parent.width; height: parent.height;
+        pressed: touch.pressed; hovered: touch.has-hover;
+    }
+    border-width: 1px;
+    border-color: Theme.line;
+    opacity: root.enabled ? 1 : 0.38;
+    animate background { duration: 100ms; easing: ease-out; }
+
+    HorizontalLayout {
+        padding-left: 12px;
+        padding-right: 12px;
+        spacing: 8px;
+        alignment: center;
+
+        Rectangle {
+            width: 18px;
+            min-height: 18px;
+            vertical-stretch: 1;
+            background: transparent;
+
+            Glyph {
+                source: root.icon;
+                tint: treatment.icon-ink;
+                width: 18px;
+                height: 18px;
+                y: (parent.height - self.height) / 2;
+            }
+        }
+
+        Text {
+            text: root.label;
+            color: touch.pressed ? treatment.label-ink : Theme.text-muted;
+            font-size: 11px;
+            font-weight: 500;
+            vertical-alignment: center;
+        }
+    }
+
+    touch := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+export component DimmerRail inherits Rectangle {
+    in property <int> model-value;
+    in property <bool> enabled: true;
+    out property <bool> dragging;
+    callback preview(int);
+    callback interacted(int);
+    callback released(int);
+
+    private property <float> visual-value: model-value;
+    private property <length> thumb-size: 22px;
+    private property <length> travel: max(1px, self.width - self.thumb-size);
+
+    changed model-value => {
+        if (!root.dragging) {
+            root.visual-value = root.model-value;
+        }
+    }
+
+    height: 44px;
+    background: transparent;
+    opacity: enabled ? 1 : 0.38;
+
+    Rectangle {
+        x: root.thumb-size / 2;
+        y: (parent.height - self.height) / 2;
+        width: root.travel;
+        height: 3px;
+        border-radius: 3px;
+        background: Theme.surface-raised;
+
+        Rectangle {
+            x: 0px;
+            width: parent.width * root.visual-value / 100;
+            height: parent.height;
+            border-radius: 3px;
+            background: Theme.activation;
+        }
+    }
+
+    Rectangle {
+        width: root.thumb-size;
+        height: root.thumb-size;
+        x: root.travel * root.visual-value / 100;
+        y: (parent.height - self.height) / 2;
+        border-radius: 11px;
+        background: Theme.activation-soft;
+        border-width: 1px;
+        border-color: Theme.activation;
+        drop-shadow-blur: 3px;
+        drop-shadow-offset-y: 1px;
+        drop-shadow-color: Theme.shadow;
+    }
+
+    touch := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+
+        pointer-event(event) => {
+            if (event.button != PointerEventButton.left) {
+                return;
+            }
+
+            if (event.kind == PointerEventKind.down) {
+                root.dragging = true;
+                root.visual-value = max(0, min(100,
+                    (self.mouse-x - root.thumb-size / 2) / root.travel * 100));
+                root.preview(round(root.visual-value));
+                root.interacted(round(root.visual-value));
+            } else if (event.kind == PointerEventKind.up) {
+                root.visual-value = max(0, min(100,
+                    (self.mouse-x - root.thumb-size / 2) / root.travel * 100));
+                root.preview(round(root.visual-value));
+                root.dragging = false;
+                root.released(round(root.visual-value));
+            } else if (event.kind == PointerEventKind.cancel) {
+                root.dragging = false;
+                root.visual-value = root.model-value;
+                root.preview(root.model-value);
+            }
+        }
+
+        moved => {
+            if (self.pressed) {
+                root.visual-value = max(0, min(100,
+                    (self.mouse-x - root.thumb-size / 2) / root.travel * 100));
+                root.preview(round(root.visual-value));
+                root.interacted(round(root.visual-value));
+            }
+        }
+    }
+}
+
+export component DeviceSettingsButton inherits Rectangle {
+    in property <bool> enabled;
+    in property <image> icon: @image-url("../assets/icons/settings.svg");
+    callback clicked;
+    width: Theme.touch-target;
+    height: Theme.touch-target;
+    border-radius: Theme.control-radius;
+    background: transparent;
+    accessible-role: button;
+    accessible-label: "Device settings";
+    accessible-enabled: root.enabled;
+    accessible-action-default => { if (root.enabled) { root.clicked(); } }
+    NeutralSurface {
+        width: parent.width; height: parent.height;
+        pressed: touch.pressed; hovered: touch.has-hover;
+    }
+    IdentityGlyph {
+        icon: root.icon;
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+    }
+    touch := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: self.enabled ? pointer : default;
+        clicked => { root.clicked(); }
+    }
+}

@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=LatticeOS
+Description=Static LatticeOS appliance boot surface
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/latticeos
+ScriptFile=/usr/share/plymouth/themes/latticeos/latticeos.script

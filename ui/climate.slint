@@ -1,0 +1,224 @@
+import { DeviceSettingsButton } from "common_controls.slint";
+import { ClimateItem } from "models.slint";
+import { Theme } from "foundation.slint";
+import { ModeButton, StepButton } from "common_controls.slint";
+
+export component ClimateControl inherits Rectangle {
+    in property <ClimateItem> climate;
+    in property <bool> can-edit;
+    callback edit-device(string);
+    callback set-setpoint(string, float);
+    callback set-mode(string, string);
+    private property <float> local-setpoint: climate.setpoint;
+    private property <color> temperature-color: root.climate.availability != 0 ? Theme.text-muted
+        : root.climate.mode == "heat" ? Theme.warm
+        : root.climate.mode == "cool" ? Theme.cool : Theme.text-muted;
+
+    changed climate => {
+        root.local-setpoint = climate.setpoint;
+    }
+
+    height: 220px;
+    background: Theme.surface;
+    border-width: 1px;
+    border-color: root.climate.availability == 2 ? #51342a : Theme.line;
+    border-radius: 6px;
+    drop-shadow-blur: 4px;
+    drop-shadow-offset-y: 2px;
+    drop-shadow-color: Theme.shadow;
+
+    VerticalLayout {
+        padding-left: 18px;
+        padding-right: 18px;
+        padding-top: 16px;
+        padding-bottom: 14px;
+        spacing: 12px;
+
+        HorizontalLayout {
+            height: Theme.touch-target;
+            spacing: 14px;
+            alignment: start;
+
+            DeviceSettingsButton {
+                icon: @image-url("../assets/icons/thermometer.svg");
+                accessible-label: "Settings for " + root.climate.name;
+                enabled: root.can-edit;
+                clicked => { root.edit-device(root.climate.id); }
+            }
+
+
+
+            VerticalLayout {
+                alignment: center;
+                spacing: 3px;
+                horizontal-stretch: 1;
+
+                Text {
+                    text: root.climate.name;
+                    color: Theme.text;
+                    font-size: 16px;
+                    font-weight: 600;
+                }
+
+                HorizontalLayout {
+                    height: 14px;
+                    spacing: 6px;
+                    if root.climate.availability == 0 && (root.climate.mode == "heat" || root.climate.mode == "cool") : Rectangle {
+                        width: 4px;
+                        background: transparent;
+                        Rectangle {
+                            width: 4px; height: 4px;
+                            y: (parent.height - self.height) / 2;
+                            border-radius: 2px;
+                            background: root.temperature-color;
+                        }
+                    }
+                    Text {
+                        text: root.climate.status;
+                        color: root.climate.availability == 2 ? Theme.warning : root.temperature-color;
+                        font-size: 11px;
+                        vertical-alignment: center;
+                    }
+                }
+            }
+
+            Text {
+                text: "CLIMATE";
+                color: Theme.text-muted;
+                font-size: 10px;
+                font-weight: 500;
+                horizontal-alignment: right;
+                vertical-alignment: center;
+                width: 72px;
+            }
+        }
+
+        Rectangle {
+            height: 1px;
+            background: Theme.line;
+        }
+
+        HorizontalLayout {
+            height: 62px;
+            spacing: 18px;
+            alignment: start;
+
+            VerticalLayout {
+                alignment: center;
+                spacing: 2px;
+
+                Text {
+                    text: "CURRENT";
+                    color: Theme.text-muted;
+                    font-size: 9px;
+                    font-weight: 500;
+                }
+
+                Text {
+                    text: round(root.climate.current-temperature * 10) / 10
+                        + "°" + root.climate.unit-label;
+                    color: root.climate.availability == 2 ? Theme.text-muted : Theme.text;
+                    font-size: 31px;
+                    font-weight: 300;
+                }
+            }
+
+            Rectangle {
+                width: 1px;
+                min-height: 44px;
+                vertical-stretch: 1;
+                background: Theme.line;
+            }
+
+            VerticalLayout {
+                alignment: center;
+                spacing: 4px;
+                horizontal-stretch: 1;
+
+                Text {
+                    text: "SETPOINT";
+                    color: Theme.text-muted;
+                    font-size: 9px;
+                    font-weight: 500;
+                    horizontal-alignment: center;
+                }
+
+                HorizontalLayout {
+                    height: 44px;
+                    spacing: 10px;
+                    alignment: center;
+
+                    StepButton {
+                        icon: @image-url("../assets/icons/minus.svg");
+                        enabled: root.climate.writable
+                            && root.local-setpoint > root.climate.minimum-setpoint;
+                        clicked => {
+                            root.local-setpoint = max(
+                                root.climate.minimum-setpoint,
+                                root.local-setpoint - root.climate.setpoint-step
+                            );
+                            root.set-setpoint(root.climate.id, root.local-setpoint);
+                        }
+                    }
+
+                    Text {
+                        width: 84px;
+                        text: round(root.local-setpoint * 10) / 10
+                            + "°" + root.climate.unit-label;
+                        color: root.climate.writable ? Theme.text : Theme.text-muted;
+                        font-size: 25px;
+                        font-weight: 300;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+
+                    StepButton {
+                        icon: @image-url("../assets/icons/plus.svg");
+                        enabled: root.climate.writable
+                            && root.local-setpoint < root.climate.maximum-setpoint;
+                        clicked => {
+                            root.local-setpoint = min(
+                                root.climate.maximum-setpoint,
+                                root.local-setpoint + root.climate.setpoint-step
+                            );
+                            root.set-setpoint(root.climate.id, root.local-setpoint);
+                        }
+                    }
+                }
+            }
+        }
+
+        HorizontalLayout {
+            height: Theme.touch-target;
+            spacing: 8px;
+
+            if root.climate.supports-off : ModeButton {
+                label: "Off";
+                active: root.climate.mode == "off";
+                enabled: root.climate.writable;
+                clicked => { root.set-mode(root.climate.id, "off"); }
+            }
+
+            if root.climate.supports-heat : ModeButton {
+                label: "Heat";
+                active: root.climate.mode == "heat";
+                enabled: root.climate.writable;
+                clicked => { root.set-mode(root.climate.id, "heat"); }
+            }
+
+            if root.climate.supports-cool : ModeButton {
+                label: "Cool";
+                active: root.climate.mode == "cool";
+                enabled: root.climate.writable;
+                clicked => { root.set-mode(root.climate.id, "cool"); }
+            }
+
+            if root.climate.supports-auto : ModeButton {
+                label: "Auto";
+                active: root.climate.mode == "auto";
+                enabled: root.climate.writable;
+                clicked => { root.set-mode(root.climate.id, "auto"); }
+            }
+        }
+    }
+}

@@ -1,0 +1,11 @@
+/target/
+/dist/
+/.idea/
+/.vscode/
+/yocto/build/
+/yocto/downloads/
+/yocto/sstate-cache/
+/experiments/
+/lab/
+__pycache__/
+*.py[cod]

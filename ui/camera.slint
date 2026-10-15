@@ -1,0 +1,303 @@
+import { DeviceSettingsButton } from "common_controls.slint";
+import { CameraItem } from "models.slint";
+import { Theme, CenteredGlyph, CenteredStatusDot, Glyph } from "foundation.slint";
+
+component CameraEventRow inherits Rectangle {
+    in property <string> label;
+    in property <string> active-label;
+    in property <string> idle-label;
+    in property <bool> active;
+    in property <bool> enabled: true;
+
+    height: 35px;
+    background: transparent;
+
+    HorizontalLayout {
+        spacing: 10px;
+        alignment: center;
+
+        Rectangle {
+            width: 7px;
+            height: 7px;
+            border-radius: 4px;
+            background: !root.enabled ? Theme.line-strong
+                : root.active ? Theme.activation
+                : Theme.control-idle;
+        }
+
+        Text {
+            text: root.label;
+            color: root.enabled ? Theme.text : Theme.text-muted;
+            font-size: 12px;
+            font-weight: 500;
+            vertical-alignment: center;
+            horizontal-stretch: 1;
+        }
+
+        Text {
+            text: !root.enabled ? "Not supported"
+                : root.active ? root.active-label
+                : root.idle-label;
+            color: !root.enabled ? Theme.text-muted
+                : root.active ? Theme.activation
+                : Theme.text-muted;
+            font-size: 11px;
+            horizontal-alignment: right;
+            vertical-alignment: center;
+        }
+    }
+}
+
+component CameraPreviewPane inherits Rectangle {
+    in property <CameraItem> camera;
+    callback view-preview(string);
+
+    background: #090b0a;
+    border-radius: 5px;
+    clip: true;
+
+    VerticalLayout {
+        alignment: center;
+        spacing: 10px;
+
+        CenteredGlyph {
+            icon: @image-url("../assets/icons/camera.svg");
+            tint: Theme.text-muted;
+            glyph-size: 30px;
+        }
+
+        Text {
+            text: "Preview unavailable";
+            color: Theme.text-muted;
+            font-size: 12px;
+            horizontal-alignment: center;
+        }
+    }
+
+    Rectangle {
+        x: 12px;
+        y: parent.height - self.height - 12px;
+        width: 112px;
+        height: 28px;
+        background: #101311dd;
+        border-radius: 4px;
+
+        HorizontalLayout {
+            padding-left: 9px;
+            padding-right: 9px;
+            spacing: 7px;
+            alignment: center;
+
+            Rectangle {
+                width: 6px;
+                height: 6px;
+                border-radius: 3px;
+                background: root.camera.availability == 0 ? Theme.success : Theme.warning;
+            }
+
+            Text {
+                text: root.camera.availability == 0 ? "RECENT FRAME"
+                    : root.camera.availability == 1 ? "LAST KNOWN"
+                    : "OFFLINE";
+                color: Theme.text;
+                font-size: 9px;
+                font-weight: 600;
+                vertical-alignment: center;
+            }
+        }
+    }
+    Rectangle {
+        x: parent.width - self.width - 12px;
+        y: parent.height - self.height - 12px;
+        width: 78px;
+        height: 28px;
+        background: view-touch.pressed ? Theme.activation-pressed
+            : view-touch.has-hover ? Theme.activation-hover
+            : Theme.activation-soft;
+        border-width: 1px;
+        border-color: Theme.activation;
+        border-radius: 4px;
+        opacity: root.camera.preview-reference != "" && root.camera.availability != 2 ? 1 : 0.45;
+
+        HorizontalLayout {
+            padding-left: 9px;
+            padding-right: 9px;
+            spacing: 6px;
+            alignment: center;
+
+            CenteredGlyph {
+                icon: @image-url("../assets/icons/camera.svg");
+                tint: Theme.activation-bright;
+                glyph-size: 14px;
+            }
+
+            Text {
+                text: "VIEW";
+                color: Theme.activation;
+                font-size: 9px;
+                font-weight: 700;
+                vertical-alignment: center;
+            }
+        }
+
+        view-touch := TouchArea {
+            enabled: root.camera.preview-reference != "" && root.camera.availability != 2;
+            mouse-cursor: self.enabled ? pointer : default;
+            clicked => { root.view-preview(root.camera.name); }
+        }
+    }
+}
+
+component CameraDetails inherits Rectangle {
+    in property <CameraItem> camera;
+
+    background: transparent;
+
+    VerticalLayout {
+        spacing: 7px;
+
+        Text {
+            text: "CURRENT DETECTIONS";
+            color: Theme.text-muted;
+            font-size: 9px;
+            font-weight: 600;
+        }
+
+        CameraEventRow {
+            label: "Doorbell";
+            active-label: "Pressed";
+            idle-label: "Quiet";
+            active: root.camera.doorbell;
+            enabled: root.camera.supports-doorbell;
+        }
+
+        CameraEventRow {
+            label: "Motion";
+            active-label: "Detected";
+            idle-label: "Clear";
+            active: root.camera.motion;
+            enabled: root.camera.supports-motion;
+        }
+
+        CameraEventRow {
+            label: "Person";
+            active-label: "Detected";
+            idle-label: "Clear";
+            active: root.camera.person;
+            enabled: root.camera.supports-person;
+        }
+
+        CameraEventRow {
+            label: "Package";
+            active-label: "Detected";
+            idle-label: "Clear";
+            active: root.camera.package;
+            enabled: root.camera.supports-package;
+        }
+
+    }
+}
+
+export component CameraControl inherits Rectangle {
+    in property <CameraItem> camera;
+    in property <bool> can-edit;
+    callback edit-device(string);
+    in property <bool> compact;
+    callback view-preview(string);
+
+    height: root.compact ? 534px : 366px;
+    background: Theme.surface;
+    border-width: 1px;
+    border-color: root.camera.availability == 2 ? #51342a : Theme.line;
+    border-radius: 6px;
+    drop-shadow-blur: 4px;
+    drop-shadow-offset-y: 2px;
+    drop-shadow-color: Theme.shadow;
+
+    VerticalLayout {
+        padding-left: 18px;
+        padding-right: 18px;
+        padding-top: 16px;
+        padding-bottom: 16px;
+        spacing: 14px;
+
+        HorizontalLayout {
+            height: 44px;
+            spacing: 12px;
+            alignment: center;
+
+            DeviceSettingsButton {
+                icon: @image-url("../assets/icons/camera.svg");
+                accessible-label: "Settings for " + root.camera.name;
+                enabled: root.can-edit;
+                clicked => { root.edit-device(root.camera.id); }
+            }
+
+
+
+            VerticalLayout {
+                alignment: center;
+                spacing: 2px;
+                horizontal-stretch: 1;
+
+                Text {
+                    text: root.camera.name;
+                    color: Theme.text;
+                    font-size: 16px;
+                    font-weight: 600;
+                }
+
+                Text {
+                    text: root.camera.status;
+                    color: root.camera.availability == 2 ? Theme.warning
+                        : root.camera.availability == 1 ? Theme.text-muted
+                        : root.camera.motion || root.camera.doorbell
+                            || root.camera.person || root.camera.package
+                            ? Theme.activation
+                            : Theme.text-muted;
+                    font-size: 11px;
+                }
+            }
+
+            Text {
+                text: "DOORBELL";
+                color: Theme.text-muted;
+                font-size: 10px;
+                font-weight: 500;
+                horizontal-alignment: right;
+                vertical-alignment: center;
+                width: 72px;
+            }
+        }
+
+        if !root.compact : HorizontalLayout {
+            spacing: 18px;
+
+            CameraPreviewPane {
+                camera: root.camera;
+                horizontal-stretch: 3;
+                view-preview(name) => { root.view-preview(name); }
+            }
+
+            CameraDetails {
+                camera: root.camera;
+                horizontal-stretch: 2;
+            }
+        }
+
+        if root.compact : VerticalLayout {
+            spacing: 14px;
+
+            CameraPreviewPane {
+                camera: root.camera;
+                height: 240px;
+                view-preview(name) => { root.view-preview(name); }
+            }
+
+            CameraDetails {
+                camera: root.camera;
+                height: 190px;
+            }
+        }
+    }
+}

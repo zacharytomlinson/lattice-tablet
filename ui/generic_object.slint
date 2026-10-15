@@ -1,0 +1,111 @@
+import { DeviceSettingsButton } from "common_controls.slint";
+import { GenericObjectItem, GenericControlItem } from "models.slint";
+import { Theme } from "foundation.slint";
+import { GenericControlRenderer } from "generic_control.slint";
+
+export component GenericObjectControl inherits Rectangle {
+    in property <GenericObjectItem> object;
+    in property <bool> can-edit;
+    private property <GenericControlItem> no-off-control;
+    callback edit-device(string);
+    callback set-binary(string, bool);
+    callback set-number(string, float);
+    callback step-number(string, float);
+    callback select-choice(string, string);
+    callback invoke-action(string);
+    callback submit-text(string, string);
+    accessible-role: groupbox;
+    accessible-label: root.object.name;
+
+    height: content.preferred-height;
+    background: Theme.surface;
+    border-width: 1px;
+    border-color: Theme.line;
+    border-radius: 6px;
+    drop-shadow-blur: 4px;
+    drop-shadow-offset-y: 2px;
+    drop-shadow-color: Theme.shadow;
+
+    content := VerticalLayout {
+        padding-top: 12px;
+        padding-bottom: root.object.primary-index >= 0 ? 12px : 1px;
+        spacing: 0px;
+
+        if root.object.primary-index >= 0 && root.object.display-label != "" : HorizontalLayout {
+            height: 24px;
+            padding-left: 16px;
+            padding-right: 16px;
+            Text {
+                text: root.object.display-label;
+                color: Theme.text;
+                font-size: 14px;
+                font-weight: 500;
+                vertical-alignment: center;
+            }
+        }
+
+        HorizontalLayout {
+            height: root.object.primary-index >= 0 ? 48px : 46px;
+            padding-left: 16px;
+            padding-right: 16px;
+            spacing: 12px;
+
+            DeviceSettingsButton {
+                icon: root.object.primary-index >= 0 ? @image-url("../assets/icons/fan.svg")
+                    : @image-url("../assets/icons/settings.svg");
+                accessible-label: "Settings for " + root.object.name;
+                enabled: root.can-edit;
+                clicked => { root.edit-device(root.object.id); }
+            }
+
+            if root.object.primary-index < 0 : VerticalLayout {
+                horizontal-stretch: 1;
+                alignment: center;
+                spacing: 0px;
+
+                Text {
+                    text: root.object.display-label;
+                    color: Theme.text;
+                    font-size: 16px;
+                    font-weight: 600;
+                    vertical-alignment: center;
+                }
+            }
+
+            if root.object.primary-index >= 0 : GenericControlRenderer {
+                horizontal-stretch: 1;
+                compact: true;
+                control: root.object.controls[root.object.primary-index];
+                has-off: root.object.off-index >= 0;
+                off-control: root.object.off-index >= 0
+                    ? root.object.controls[root.object.off-index] : root.no-off-control;
+                step-number(handle, value) => { root.step-number(handle, value); }
+                invoke-action(handle) => { root.invoke-action(handle); }
+            }
+
+            if root.object.direction-index >= 0 : GenericControlRenderer {
+                width: 112px;
+                compact: true;
+                control: root.object.controls[root.object.direction-index];
+                select-choice(handle, choice) => { root.select-choice(handle, choice); }
+            }
+
+        }
+
+        for control[index] in root.object.controls : VerticalLayout {
+            padding-left: root.object.primary-index >= 0 ? 16px : 0px;
+            padding-right: root.object.primary-index >= 0 ? 16px : 0px;
+            if control.kind != 7 && index != root.object.primary-index
+                && index != root.object.off-index && index != root.object.direction-index : GenericControlRenderer {
+                compact: root.object.primary-index >= 0;
+                control: control;
+                set-binary(handle, value) => { root.set-binary(handle, value); }
+                set-number(handle, value) => { root.set-number(handle, value); }
+                step-number(handle, value) => { root.step-number(handle, value); }
+                select-choice(handle, choice) => { root.select-choice(handle, choice); }
+                invoke-action(handle) => { root.invoke-action(handle); }
+                submit-text(handle, value) => { root.submit-text(handle, value); }
+            }
+        }
+    }
+}

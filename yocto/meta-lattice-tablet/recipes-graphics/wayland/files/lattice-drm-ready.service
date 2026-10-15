@@ -1,0 +1,14 @@
+[Unit]
+Description=Wait for the kiosk DRM device
+DefaultDependencies=no
+After=systemd-udev-trigger.service
+Before=weston.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c 'while [ ! -e /dev/dri/card0 ]; do sleep 0.1; done'
+TimeoutStartSec=30
+RemainAfterExit=yes
+
+[Install]
+WantedBy=graphical.target
