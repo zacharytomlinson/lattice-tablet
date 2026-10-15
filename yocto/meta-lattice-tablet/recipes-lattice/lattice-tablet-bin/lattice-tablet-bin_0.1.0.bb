@@ -6,6 +6,7 @@ FILESEXTRAPATHS:prepend := "${LATTICE_TABLET_ARTIFACT_DIR}:${THISDIR}/files:"
 
 SRC_URI = "\
     file://lattice-tablet \
+    file://lattice-peer \
     file://lattice-tablet.service \
     file://journald-bringup.conf \
     file://authorized_keys \
@@ -20,6 +21,7 @@ SYSTEMD_AUTO_ENABLE:${PN} = "enable"
 
 do_install() {
     install -Dm0755 ${WORKDIR}/lattice-tablet ${D}${bindir}/lattice-tablet
+    install -Dm0755 ${WORKDIR}/lattice-peer ${D}${bindir}/lattice-peer
     install -Dm0644 ${WORKDIR}/lattice-tablet.service \
         ${D}${systemd_system_unitdir}/lattice-tablet.service
     install -Dm0644 ${WORKDIR}/journald-bringup.conf \

@@ -1,0 +1,15 @@
+[package]
+name = "lattice-tablet-peer"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[workspace]
+
+[[bin]]
+name = "lattice-peer"
+path = "src/main.rs"
+
+[dependencies]
+lattice-host-link = { git = "ssh://git@github.com/zacharytomlinson/lattice-vertex.git", rev = "0ac46ca55cb5ddf5eb8f02ac85a1e047dae0d4fb" }
+libc = "0.2"

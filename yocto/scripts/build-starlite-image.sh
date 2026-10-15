@@ -69,6 +69,14 @@ cargo build \
 install -m0755 \
     "${REPOSITORY_ROOT}/target/x86_64-unknown-linux-gnu/release/lattice-tablet" \
     "${ARTIFACT_DIR}/lattice-tablet"
+cargo build \
+    --manifest-path "${REPOSITORY_ROOT}/peer/Cargo.toml" \
+    --target-dir "${REPOSITORY_ROOT}/peer/target" \
+    --locked --release --target x86_64-unknown-linux-gnu
+install -m0755 \
+    "${REPOSITORY_ROOT}/peer/target/x86_64-unknown-linux-gnu/release/lattice-peer" \
+    "${ARTIFACT_DIR}/lattice-peer"
+
 if [[ -n ${LATTICE_SSH_AUTHORIZED_KEYS:-} ]]; then
     install -m0644 "${LATTICE_SSH_AUTHORIZED_KEYS}" "${ARTIFACT_DIR}/authorized_keys"
 else

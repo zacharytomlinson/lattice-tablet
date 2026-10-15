@@ -39,7 +39,8 @@ or differently pinned source checkout. The image builder compiles the Rust
 frontend, packages it with the Linux image, and prints the WIC artifact paths.
 
 `build-starlite-image.sh --prepare-only` builds/packages the frontend and writes
-the BitBake configuration without running the image build. That is not a bootable
+the BitBake configuration without running the image build. It also builds and
+packages `lattice-peer`, the host CLI; no peer daemon is auto-started. That is not a bootable
 image. The recipe packages a host-built GNU/Linux executable, as the source
 platform did; the resulting image's dynamic libraries must satisfy that artifact.
 A successful host build does not establish target ABI or device acceptance.
