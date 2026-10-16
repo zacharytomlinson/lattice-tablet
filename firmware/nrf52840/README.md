@@ -74,5 +74,14 @@ serial writes. The final Git-pinned image also delivered level 110 at sequence 8
 and software DFU entry still worked. Some surface reads and a native call timed
 out; no mutation was automatically retried. Two-change bursts were incomplete at
 the host without an overflow notice. No complete-delivery or
-root-cause claim follows; the RF investigation remains paused. Overflow and
+root-cause claim follows; the RF investigation is tracked beside the kernel transport. Overflow and
 reply/event interleaving are covered by portable checks beside their owners.
+
+
+The current kernel pin includes receive turns between transmissions and bounded
+completion of in-progress frames before cancellation. Forwarding remains enabled.
+Controlled A/B/A testing identified the earlier repeated second-delta loss as a
+half-duplex timing problem. Ordinary images then delivered 57/58 registered changes
+in a 32-call run; 29 native results and 28/30 surface ranges arrived. Residual losses
+remain under investigation. No retry was added to native calls or packet sends.
+Diagnostic firmware and captures remain outside both maintained repositories.

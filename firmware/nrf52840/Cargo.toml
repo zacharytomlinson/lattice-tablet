@@ -8,7 +8,7 @@ build = "build.rs"
 [workspace]
 
 [dependencies]
-lattice-vertex = { git = "ssh://git@github.com/zacharytomlinson/lattice-vertex.git", rev = "ce544e4e72ae0182b9a8807c289cb2aeedd05812", default-features = false, features = ["port-nrf52840", "host-link"] }
+lattice-vertex = { git = "ssh://git@github.com/zacharytomlinson/lattice-vertex.git", rev = "05ea7c3232814f624795c68f4e883fda8dcb6746", default-features = false, features = ["port-nrf52840", "host-link"] }
 cortex-m = "0.7"
 cortex-m-rt = { version = "0.7", features = ["set-vtor", "set-sp"] }
 embassy-usb = { version = "=0.5.1", default-features = false }

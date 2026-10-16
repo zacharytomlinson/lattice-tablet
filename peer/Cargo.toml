@@ -11,5 +11,5 @@ name = "lattice-peer"
 path = "src/main.rs"
 
 [dependencies]
-lattice-peer-wire = { git = "ssh://git@github.com/zacharytomlinson/lattice-vertex.git", rev = "ce544e4e72ae0182b9a8807c289cb2aeedd05812", features = ["host"] }
+lattice-peer-wire = { git = "ssh://git@github.com/zacharytomlinson/lattice-vertex.git", rev = "05ea7c3232814f624795c68f4e883fda8dcb6746", features = ["host"] }
 libc = "0.2"
