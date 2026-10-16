@@ -77,3 +77,10 @@ produces no state events. `watch` does not invent one to demonstrate liveness.
 Status, links, surfaces, state reads, native invocation, and pushed changes are
 implemented. Continuous daemon behavior and UI integration remain next. The image
 includes this CLI but does not start a peer service. The library and CLI remain independent of Slint and of the currently installed tablet OS.
+
+The client has also run on the physical StarLite through its USB-attached nRF:
+link enumeration, a complete remote surface, and native invocation followed by a
+pushed registered change. The current tablet kernel needed a matching CDC ACM
+module loaded at runtime. This was a temporary `/run` deployment on the existing
+installation; the independent Lattice image and UI have not been deployed.
+See [the validation boundary](../docs/ARCHITECTURE.md#starlite-coprocessor-proof).

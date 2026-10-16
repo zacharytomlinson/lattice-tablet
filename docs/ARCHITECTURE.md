@@ -72,3 +72,25 @@ the remote diagnostic console closed. Earlier closed-console and post-reflash
 reads timed out; console state alone was not established as their cause. A concrete
 read-token reuse defect across MCU restart was corrected. Functional validation
 still does not establish delivery reliability or justify automatic mutation retries.
+
+## StarLite coprocessor proof
+
+The existing StarLite installation has now run the same Linux client against a
+USB-attached XIAO companion. The companion joined the network, returned its
+maintained neighbor, supplied that neighbor's complete 195-byte LSF surface, and
+carried a native call followed by the remote registered level change (111,
+sequence 9). The call/change exchange used one persistent USB connection with no
+state reads or automatic mutation retry. An idle `watch` was observed sleeping
+in Linux `do_sys_poll`. The other nRF ran the maintained software dimmer fixture. No nucleus or laptop-side peer process mediated the exchange.
+
+The installed Jarvis-era kernel lacked CDC ACM. A matching upstream `cdc_acm`
+module was built using its packaged kernel source/configuration and symbol table,
+then loaded at runtime. Client, diagnostic helper, and module were staged in
+`/run`; the existing kiosk stayed active and no boot files, partitions, persistent
+services, or application state were changed. This verifies the coprocessor path on
+the real tablet, not the separate Lattice OS image or frontend integration.
+The Lattice image already enables `CONFIG_USB_ACM=m` and includes `kernel-modules`.
+
+The first surface read timed out; a separately issued read completed. Delivery
+reliability remains unresolved. Board-specific capture/build material belongs in
+the external lab, not in this source tree.

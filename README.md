@@ -12,7 +12,9 @@ link, link/surface/state reads, and native transformer invocation, exercised wit
 two nRF52840 boards and the maintained software dimmer fixture. The client consumes
 handles from the device's full mathematical surface and receives registered changes
 over USB without polling the companion. Daemon/UI integration is next; no appliance
-controls are connected to the frontend yet.
+controls are connected to the frontend yet. The same client/companion path has
+also been verified on the physical StarLite using a temporary runtime deployment
+on its existing installation; this does not constitute a Lattice OS installation.
 Camera layouts remain available, but image delivery is not implemented.
 
 The [architecture map](docs/ARCHITECTURE.md) distinguishes implemented support
