@@ -1,6 +1,8 @@
 //! Linux transport for the tablet's attached peer. No UI or household model.
-use lattice_host_link::{Decoder, MAX_PACKET};
-pub use lattice_host_link::{Failure, Packet};
+pub use lattice_peer_wire::host::{Arguments, Failure, Packet};
+use lattice_peer_wire::host::{Decoder, MAX_PACKET};
+pub use lattice_peer_wire::{Integer, InvokeStatus, StateReadResult, Type, Value};
+pub mod surface;
 use std::{
     fs::{File, OpenOptions},
     io::{self, Read, Write},
@@ -49,10 +51,12 @@ impl Client {
         if unsafe { libc::ioctl(fd, libc::TIOCMBIS, &dtr) } < 0 {
             return Err(io::Error::last_os_error());
         }
+        let mut seed = [0u8; 4];
+        File::open("/dev/urandom")?.read_exact(&mut seed)?;
         Ok(Self {
             file,
             decoder: Decoder::new(),
-            token: 0,
+            token: u32::from_le_bytes(seed),
         })
     }
     pub fn status(&mut self) -> io::Result<Packet> {
@@ -66,6 +70,70 @@ impl Client {
             owner,
             after,
             via,
+        })
+    }
+    pub fn read_surface_part(&mut self, owner: u64, offset: u16) -> io::Result<Packet> {
+        self.token = self.token.wrapping_add(1);
+        self.exchange(Packet::ReadSurface {
+            token: self.token,
+            owner,
+            offset,
+        })
+    }
+    /// Missing/changing ranges fail the transfer. Partial bytes are never a surface.
+    pub fn read_surface(&mut self, owner: u64) -> io::Result<Vec<u8>> {
+        let mut bytes = Vec::new();
+        let mut total = None;
+        loop {
+            let reply = self.read_surface_part(owner, bytes.len() as u16)?;
+            let Packet::Surface {
+                total: size, data, ..
+            } = reply
+            else {
+                return Err(io::Error::other(format!(
+                    "surface read at offset {} failed: {reply:?}",
+                    bytes.len()
+                )));
+            };
+            if total.is_some_and(|old| old != size) {
+                return Err(io::Error::other("surface changed during transfer"));
+            }
+            total = Some(size);
+            if data.as_slice().is_empty() && bytes.len() != size as usize {
+                return Err(io::Error::other("incomplete surface"));
+            }
+            bytes.extend_from_slice(data.as_slice());
+            if bytes.len() == size as usize {
+                return Ok(bytes);
+            }
+            if bytes.len() > size as usize {
+                return Err(io::Error::other("surface range exceeded total"));
+            }
+        }
+    }
+    pub fn read_state(&mut self, owner: u64, attribute: u64) -> io::Result<Packet> {
+        self.token = self.token.wrapping_add(1);
+        self.exchange(Packet::ReadState {
+            token: self.token,
+            owner,
+            attribute,
+        })
+    }
+    /// One native invocation attempt. Timeout or USB loss leaves its outcome
+    /// unknown: this never retries or infers physical post-state.
+    pub fn invoke(&mut self, owner: u64, transformer: u64, values: &[Value]) -> io::Result<Packet> {
+        let arguments = Arguments::new(values).ok_or_else(|| {
+            io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "arguments exceed one radio frame",
+            )
+        })?;
+        self.token = self.token.wrapping_add(1);
+        self.exchange(Packet::Invoke {
+            token: self.token,
+            owner,
+            transformer,
+            arguments,
         })
     }
     fn exchange(&mut self, request: Packet) -> io::Result<Packet> {
@@ -124,6 +192,34 @@ impl Client {
                                 ..
                             },
                         ) => (owner, after, via) == (o, a, v),
+                        (
+                            Packet::ReadSurface { owner, offset, .. },
+                            Packet::Surface {
+                                owner: o,
+                                offset: at,
+                                ..
+                            },
+                        ) => (owner, offset) == (o, at),
+                        (
+                            Packet::ReadState {
+                                owner, attribute, ..
+                            },
+                            Packet::State {
+                                owner: o,
+                                attribute: a,
+                                ..
+                            },
+                        ) => (owner, attribute) == (o, a),
+                        (
+                            Packet::Invoke {
+                                owner, transformer, ..
+                            },
+                            Packet::Invoked {
+                                owner: o,
+                                transformer: t,
+                                ..
+                            },
+                        ) => (owner, transformer) == (o, t),
                         _ => false,
                     };
                     if matches {

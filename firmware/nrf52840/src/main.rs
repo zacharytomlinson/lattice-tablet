@@ -177,16 +177,27 @@ extern "C" fn usb_task(_: *mut c_void) {
                 if let Some(response) = response {
                     let n = response.encode(&mut output);
                     let written = {
-                        let mut write = pin!(sender.write_packet(&output[..n]));
-                        poll_fn(|cx| {
-                            session.update(
-                                &context,
-                                receiver.dtr(),
-                                receiver.line_coding().data_rate(),
-                            );
-                            write.as_mut().poll(cx)
-                        })
-                        .await
+                        let mut result = Ok(());
+                        // Endpoint packets do not delimit protocol records.
+                        for chunk in output[..n]
+                            .chunks(64)
+                            .chain((n % 64 == 0).then_some(&[][..]))
+                        {
+                            let mut write = pin!(sender.write_packet(chunk));
+                            result = poll_fn(|cx| {
+                                session.update(
+                                    &context,
+                                    receiver.dtr(),
+                                    receiver.line_coding().data_rate(),
+                                );
+                                write.as_mut().poll(cx)
+                            })
+                            .await;
+                            if result.is_err() {
+                                break;
+                            }
+                        }
+                        result
                     };
                     if written.is_err() {
                         host::disconnect(&context);

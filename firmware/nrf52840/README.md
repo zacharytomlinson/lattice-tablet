@@ -9,8 +9,10 @@ included in this image.
 
 The USB task uses Embassy's peripheral driver and CDC stack, polled once per kernel
 millisecond through the existing RTOS. No Embassy executor or heap is installed.
-Current binary records fit in one endpoint packet; the decoder treats USB as a
-stream and handles split/combined records. The development identity is `c0de:cafd`,
+Host v2 uses fixed 128-byte buffers; current records are at most 87 bytes and can
+span two endpoint packets. The decoder handles split/combined records, and writes
+end with a short packet or ZLP. Control/DFU handling stays active during those
+writes. Each corresponding radio message still fits one RF frame. The development identity is `c0de:cafd`,
 product `Tablet radio`, with the chip's factory identifier as the serial number.
 This VID/PID is for development, not a production USB allocation.
 
@@ -42,11 +44,19 @@ other firmware may have its own entry mechanism. A device already in Seeed seria
 DFU (`2886:0045` on the Sense) needs no `--touch`. This uses USB only and never
 changes the tablet's installed OS.
 
-The Linux client is in `../../peer`. The first hardware acceptance used a second
-nRF running the kernel's ordinary port fixture, without the radio probe or peer
-observer. The host enumerated the attached peer, read the other peer over radio,
-and received the reciprocal relationship and explicit end-of-list. A nonexistent
-owner returned a timeout and the next valid read completed. One attempt returned
-a transmit error; a fresh read succeeded. Reopening USB and software-controlled
-application reflash also worked. This validates that path;
-it is not a range, loss-rate, or multi-hop hardware measurement.
+The Linux client is in `../../peer`. Link enumeration was first verified against
+the ordinary Nordic port fixture. Surface/state/call validation uses its maintained
+`test-appliance` feature: a software dimmer declaring two states, a native operation,
+an axiom, and an invariant. The client reconstructed its 195-byte surface, obtained
+handles from that description, set its level through the native operation, and read
+back registered level/power changes. Wrong argument types and values beyond the
+native range returned distinct failures. This validates kernel dispatch and fixture
+state, not a physical dimmer output. Some radio reads timed out; no mutation was
+automatically retried. Range/reliability investigation remains paused.
+
+The final pinned image passed surface -> invocation -> registered-state reads,
+and a subsequent read with the remote console closed. Earlier closed-console and
+post-reflash reads timed out, including a rerun with the console open; no single
+cause was established for all failures. Read-token reuse across MCU restart was
+fixed and covered by a regression check. Range/reliability work remains separate.
+Temporary status images and register notes stay in the external lab.

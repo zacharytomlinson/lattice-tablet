@@ -19,6 +19,6 @@ being relicensed by this extraction.
 
 The tablet radio application uses `lattice-vertex`. Its XIAO memory layout and
 application-only packaging helper come from that kernel's maintained Nordic port
-support. The Linux client and kernel consume one `lattice-host-link` codec. Both
+support. The Linux client and kernel consume one `lattice-peer-wire` codec. Both
 Cargo manifests pin the kernel repository revision instead of relying on local
 sibling checkouts. Radio experiments and reference images are not dependencies.

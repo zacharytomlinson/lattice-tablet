@@ -8,9 +8,10 @@ This foundation carries the display, touch, rotation, backlight, power support,
 visual components, local Wi-Fi settings, and kiosk supervision forward into its
 own installation. It starts with an empty Home screen. The [Linux peer client](peer/README.md)
 and [XIAO radio application](firmware/nrf52840/README.md) now provide a binary USB
-link and local/remote link enumeration, exercised with two nRF52840 boards. Surface
-reading, transformer invocation, state deltas, and UI integration are next; no
-appliance controls are connected to the frontend yet.
+link, link/surface/state reads, and native transformer invocation, exercised with
+two nRF52840 boards and the maintained software dimmer fixture. The client consumes
+handles from the device's full mathematical surface. Delta streaming and UI
+integration are next; no appliance controls are connected to the frontend yet.
 Camera layouts remain available, but image delivery is not implemented.
 
 The [architecture map](docs/ARCHITECTURE.md) distinguishes implemented support

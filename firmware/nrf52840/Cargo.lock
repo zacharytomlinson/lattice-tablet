@@ -486,14 +486,17 @@ dependencies = [
 ]
 
 [[package]]
-name = "lattice-host-link"
-version = "0.1.0"
-source = "git+ssh://git@github.com/zacharytomlinson/lattice-vertex.git?rev=0ac46ca55cb5ddf5eb8f02ac85a1e047dae0d4fb#0ac46ca55cb5ddf5eb8f02ac85a1e047dae0d4fb"
-
-[[package]]
 name = "lattice-ir"
 version = "0.1.0"
 source = "git+ssh://git@github.com/zacharytomlinson/lattice-ir.git?rev=8cc8629fc6b94f32848d0fc0336db8cbcea79596#8cc8629fc6b94f32848d0fc0336db8cbcea79596"
+
+[[package]]
+name = "lattice-peer-wire"
+version = "0.1.0"
+source = "git+ssh://git@github.com/zacharytomlinson/lattice-vertex.git?rev=df71c62404509f3f527917d387838d482a83db7d#df71c62404509f3f527917d387838d482a83db7d"
+dependencies = [
+ "lattice-ir",
+]
 
 [[package]]
 name = "lattice-tablet-radio"
@@ -509,7 +512,7 @@ dependencies = [
 [[package]]
 name = "lattice-vertex"
 version = "0.3.0"
-source = "git+ssh://git@github.com/zacharytomlinson/lattice-vertex.git?rev=0ac46ca55cb5ddf5eb8f02ac85a1e047dae0d4fb#0ac46ca55cb5ddf5eb8f02ac85a1e047dae0d4fb"
+source = "git+ssh://git@github.com/zacharytomlinson/lattice-vertex.git?rev=df71c62404509f3f527917d387838d482a83db7d#df71c62404509f3f527917d387838d482a83db7d"
 dependencies = [
  "byte",
  "cortex-m",
@@ -517,8 +520,8 @@ dependencies = [
  "embassy-nrf",
  "embassy-sync 0.8.0",
  "ieee802154",
- "lattice-host-link",
  "lattice-ir",
+ "lattice-peer-wire",
 ]
 
 [[package]]
