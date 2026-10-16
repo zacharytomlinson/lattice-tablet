@@ -8,6 +8,7 @@ Both sides use the shared `lattice-peer-wire` host codec and `lattice-ir` values
 
 ```sh
 cargo +stable build --manifest-path peer/Cargo.toml --locked
+peer/target/debug/lattice-peer /dev/serial/by-id/DEVICE watch [COUNT]
 peer/target/debug/lattice-peer /dev/serial/by-id/DEVICE status
 peer/target/debug/lattice-peer /dev/serial/by-id/DEVICE links
 peer/target/debug/lattice-peer /dev/serial/by-id/DEVICE links OWNER_HEX [VIA_HEX]
@@ -38,12 +39,12 @@ detect a simultaneous reflash with an equal-length description.
 `state` returns an established value and change watermark, or an explicit read
 failure. A successful read may report that its value is unavailable. `invoke`
 submits one typed native call. `Invoked` means the function returned success;
-**read the state to establish what changed**. Native functions enforce device
-limits; no IR interpreter is installed in the MCU. Arguments must fit one RF frame
+**registered changes or explicit state reads establish what changed**. Native
+functions enforce device limits; no IR interpreter is installed in the MCU. Arguments must fit one RF frame
 (61 encoded bytes, at most 30 scalars); calls are not fragmented.
 
 The serial client selects raw 115200-baud settings, DTR, and exclusive access.
-The baud setting does not rate-limit CDC to a physical UART. Host v2 records are
+The baud setting does not rate-limit CDC to a physical UART. Host v3 records are
 binary and may span USB endpoint packets; the CLI formats text only after decoding.
 It seeds its 32-bit token sequence from OS entropy per connection. The MCU uses
 the first host read token to seed its separate 16-bit radio-read counter, which then
@@ -57,7 +58,22 @@ call, not recovery of the previous one. Read established state before deciding w
 to do. Closing USB cancels host completions without withdrawing the resident nRF
 or undoing an already-reached operation.
 
-Status, links, surfaces, state reads, and native invocation are implemented.
-Unsolicited delta streaming, continuous daemon behavior, and UI integration remain
-next. The image includes this CLI but does not start a peer service. The library
-and CLI remain independent of Slint and of the currently installed tablet OS.
+`watch` opens a persistent connection and waits for unsolicited registered changes.
+It sends no status, subscription, or state-read packet. `Client::wait_event(None)`
+blocks in Linux `poll(2)` until USB data is readable; this system call sends no
+Lattice polling request. A finite timeout is also available without closing the
+session. A consumer can invoke a transformer and wait for changes on the same
+`Client`; events interleaved with command replies are retained, including those
+coalesced after a reply in one USB read. Command completion remains distinct.
+
+The companion holds eight pending changes; Linux retains 32 while its caller is
+handling other operations. Both evict the oldest change when full. `Event::Lagged`
+reports the count and distinguishes companion overflow from client overflow.
+Loss notices are delivered before retained changes; they are gap notifications,
+not positions in a complete history or counts of missed RF frames. Opening a new
+connection starts a fresh stream with no snapshot/history replay. An idle network
+produces no state events. `watch` does not invent one to demonstrate liveness.
+
+Status, links, surfaces, state reads, native invocation, and pushed changes are
+implemented. Continuous daemon behavior and UI integration remain next. The image
+includes this CLI but does not start a peer service. The library and CLI remain independent of Slint and of the currently installed tablet OS.

@@ -1,7 +1,8 @@
 //! Linux transport for the tablet's attached peer. No UI or household model.
+use lattice_peer_wire::host::MAX_PACKET;
 pub use lattice_peer_wire::host::{Arguments, Failure, Packet};
-use lattice_peer_wire::host::{Decoder, MAX_PACKET};
-pub use lattice_peer_wire::{Integer, InvokeStatus, StateReadResult, Type, Value};
+pub use lattice_peer_wire::{Integer, InvokeStatus, StateChange, StateReadResult, Type, Value};
+mod stream;
 pub mod surface;
 use std::{
     fs::{File, OpenOptions},
@@ -11,10 +12,12 @@ use std::{
     path::Path,
     time::{Duration, Instant},
 };
+use stream::Inbox;
+pub use stream::{Event, LossSource};
 
 pub struct Client {
     file: File,
-    decoder: Decoder,
+    inbox: Inbox,
     token: u32,
 }
 impl Client {
@@ -55,7 +58,7 @@ impl Client {
         File::open("/dev/urandom")?.read_exact(&mut seed)?;
         Ok(Self {
             file,
-            decoder: Decoder::new(),
+            inbox: Inbox::new(),
             token: u32::from_le_bytes(seed),
         })
     }
@@ -136,6 +139,31 @@ impl Client {
             arguments,
         })
     }
+    /// Wait for pushed changes without transmitting a request. Events received
+    /// during another operation are retained in a bounded buffer. A timeout does
+    /// not close the session; callers can continue waiting on this same client.
+    pub fn wait_event(&mut self, timeout: Option<Duration>) -> io::Result<Event> {
+        let deadline = timeout.map(|duration| Instant::now() + duration);
+        let mut input = [0; 256];
+        loop {
+            if let Some(event) = self.inbox.next() {
+                return Ok(event);
+            }
+            ready(&self.file, libc::POLLIN, deadline)?;
+            match self.file.read(&mut input) {
+                Ok(0) => return Err(io::ErrorKind::UnexpectedEof.into()),
+                Ok(n) => {
+                    self.inbox.feed(&input[..n], None);
+                }
+                Err(e)
+                    if matches!(
+                        e.kind(),
+                        io::ErrorKind::WouldBlock | io::ErrorKind::Interrupted
+                    ) => {}
+                Err(e) => return Err(e),
+            }
+        }
+    }
     fn exchange(&mut self, request: Packet) -> io::Result<Packet> {
         let deadline = Instant::now() + Duration::from_secs(15);
         let mut encoded = [0; MAX_PACKET];
@@ -145,7 +173,7 @@ impl Client {
         output[1..n + 1].copy_from_slice(&encoded[..n]);
         let mut sent = 0;
         while sent < n + 1 {
-            ready(&self.file, libc::POLLOUT, deadline)?;
+            ready(&self.file, libc::POLLOUT, Some(deadline))?;
             match self.file.write(&output[sent..n + 1]) {
                 Ok(0) => return Err(io::ErrorKind::WriteZero.into()),
                 Ok(n) => sent += n,
@@ -159,7 +187,7 @@ impl Client {
         }
         let mut input = [0; 256];
         loop {
-            ready(&self.file, libc::POLLIN, deadline)?;
+            ready(&self.file, libc::POLLIN, Some(deadline))?;
             let n = match self.file.read(&mut input) {
                 Ok(0) => return Err(io::ErrorKind::UnexpectedEof.into()),
                 Ok(n) => n,
@@ -173,84 +201,33 @@ impl Client {
                 }
                 Err(e) => return Err(e),
             };
-            for byte in &input[..n] {
-                if let Some(reply) = self.decoder.push(*byte) {
-                    if reply.token() != request.token() {
-                        continue;
-                    }
-                    let matches = match (request, reply) {
-                        (_, Packet::Error { .. }) => true,
-                        (Packet::Status { .. }, Packet::Ready { .. }) => true,
-                        (
-                            Packet::ReadLinks {
-                                owner, after, via, ..
-                            },
-                            Packet::Link {
-                                owner: o,
-                                after: a,
-                                via: v,
-                                ..
-                            },
-                        ) => (owner, after, via) == (o, a, v),
-                        (
-                            Packet::ReadSurface { owner, offset, .. },
-                            Packet::Surface {
-                                owner: o,
-                                offset: at,
-                                ..
-                            },
-                        ) => (owner, offset) == (o, at),
-                        (
-                            Packet::ReadState {
-                                owner, attribute, ..
-                            },
-                            Packet::State {
-                                owner: o,
-                                attribute: a,
-                                ..
-                            },
-                        ) => (owner, attribute) == (o, a),
-                        (
-                            Packet::Invoke {
-                                owner, transformer, ..
-                            },
-                            Packet::Invoked {
-                                owner: o,
-                                transformer: t,
-                                ..
-                            },
-                        ) => (owner, transformer) == (o, t),
-                        _ => false,
-                    };
-                    if matches {
-                        return Ok(reply);
-                    }
-                }
+            if let Some(reply) = self.inbox.feed(&input[..n], Some(request)) {
+                return Ok(reply);
             }
         }
     }
 }
-fn ready(file: &File, events: i16, deadline: Instant) -> io::Result<()> {
+fn ready(file: &File, events: i16, deadline: Option<Instant>) -> io::Result<()> {
     loop {
-        let remaining = deadline.saturating_duration_since(Instant::now());
-        if remaining.is_zero() {
-            return Err(io::Error::new(
-                io::ErrorKind::TimedOut,
-                "host link timed out; request was not retried",
-            ));
-        }
+        let milliseconds = match deadline {
+            None => -1,
+            Some(deadline) => {
+                let remaining = deadline.saturating_duration_since(Instant::now());
+                if remaining.is_zero() {
+                    return Err(io::Error::new(
+                        io::ErrorKind::TimedOut,
+                        "host link wait timed out",
+                    ));
+                }
+                remaining.as_millis().max(1).min(i32::MAX as u128) as i32
+            }
+        };
         let mut poll = libc::pollfd {
             fd: file.as_raw_fd(),
             events,
             revents: 0,
         };
-        let result = unsafe {
-            libc::poll(
-                &mut poll,
-                1,
-                remaining.as_millis().min(i32::MAX as u128) as i32,
-            )
-        };
+        let result = unsafe { libc::poll(&mut poll, 1, milliseconds) };
         if result < 0 {
             let e = io::Error::last_os_error();
             if e.kind() == io::ErrorKind::Interrupted {

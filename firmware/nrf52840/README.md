@@ -4,15 +4,21 @@ Maintained application for the XIAO nRF52840/Sense used as the tablet's radio.
 It starts the ordinary Lattice kernel with an empty local appliance surface and
 one low-priority USB task. The kernel selects its network and maintains/forwards
 links even while USB is closed. Its optional local host endpoint services Linux
-requests under the same radio identity. No diagnostic traffic or text console is
-included in this image.
+requests and pushes registered changes under the same radio identity. No diagnostic
+traffic or text console is included in this image.
 
 The USB task uses Embassy's peripheral driver and CDC stack, polled once per kernel
 millisecond through the existing RTOS. No Embassy executor or heap is installed.
-Host v2 uses fixed 128-byte buffers; current records are at most 87 bytes and can
-span two endpoint packets. The decoder handles split/combined records, and writes
+Host v3 uses a fixed 128-byte record buffer plus a leading delimiter; current
+records are at most 87 bytes and can span two endpoint packets. The decoder handles split/combined records, and writes
 end with a short packet or ZLP. Control/DFU handling stays active during those
-writes. Each corresponding radio message still fits one RF frame. The development identity is `c0de:cafd`,
+writes, including when Linux is not draining IN. The USB loop selects incoming
+requests or pending kernel records; it does not wait for a request to send an event.
+DTR attaches/detaches the change stream. The MCU still services USB once per
+millisecond, but Linux never sends periodic requests to obtain those changes.
+The Nordic driver finishes DMA within a poll; cancelling a pending OUT wait to
+send an event leaves the endpoint data intact. Each corresponding radio message
+still fits one RF frame. The development identity is `c0de:cafd`,
 product `Tablet radio`, with the chip's factory identifier as the serial number.
 This VID/PID is for development, not a production USB allocation.
 
@@ -54,9 +60,19 @@ native range returned distinct failures. This validates kernel dispatch and fixt
 state, not a physical dimmer output. Some radio reads timed out; no mutation was
 automatically retried. Range/reliability investigation remains paused.
 
-The final pinned image passed surface -> invocation -> registered-state reads,
+The earlier host v2 image passed surface -> invocation -> registered-state reads,
 and a subsequent read with the remote console closed. Earlier closed-console and
 post-reflash reads timed out, including a rerun with the console open; no single
 cause was established for all failures. Read-token reuse across MCU restart was
 fixed and covered by a regression check. Range/reliability work remains separate.
 Temporary status images and register notes stay in the external lab.
+
+Host v3 also delivered real power changes and a later level change (108) to the
+Linux client over the same persistent connection used for native calls, with no
+`ReadState` requests. An idle `watch` was traced blocking for USB input with no
+serial writes. The final Git-pinned image also delivered level 110 at sequence 8,
+and software DFU entry still worked. Some surface reads and a native call timed
+out; no mutation was automatically retried. Two-change bursts were incomplete at
+the host without an overflow notice. No complete-delivery or
+root-cause claim follows; the RF investigation remains paused. Overflow and
+reply/event interleaving are covered by portable checks beside their owners.

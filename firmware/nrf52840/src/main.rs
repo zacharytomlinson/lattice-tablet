@@ -12,6 +12,7 @@ use core::{
 use embassy_futures::join::join;
 use embassy_usb::{
     class::cdc_acm::{CdcAcmClass, State},
+    driver::EndpointError,
     Builder, Config,
 };
 use hal::{
@@ -53,10 +54,16 @@ struct UsbSession {
     reset_since: Option<u32>,
 }
 impl UsbSession {
+    fn close(&mut self, context: &TaskContext) {
+        host::disconnect(context);
+        self.dtr = false;
+        self.epoch = self.epoch.wrapping_add(1);
+    }
     fn update(&mut self, context: &TaskContext, dtr: bool, rate: u32) {
         if self.dtr && !dtr {
-            host::disconnect(context);
-            self.epoch = self.epoch.wrapping_add(1);
+            self.close(context);
+        } else if !self.dtr && dtr {
+            host::connect(context);
         }
         self.dtr = dtr;
         if rate != 1200 || dtr {
@@ -123,87 +130,101 @@ extern "C" fn usb_task(_: *mut c_void) {
         };
         let mut seen_epoch = 0;
         let mut input = [0; 64];
-        let mut output = [0; host::MAX_PACKET];
+        let mut output = [0; host::MAX_PACKET + 1];
+        let (mut cursor, mut available) = (0, 0);
+        enum Activity {
+            Input(Result<usize, EndpointError>),
+            Output(host::Packet),
+            SessionChanged,
+        }
         loop {
             receiver.wait_connection().await;
-            let received = {
-                let mut read = pin!(receiver.read_packet(&mut input));
-                poll_fn(|cx| {
-                    session.update(&context, sender.dtr(), sender.line_coding().data_rate());
-                    read.as_mut().poll(cx)
-                })
-                .await
-            };
-            let count = match received {
-                Ok(n) => n,
-                Err(_) => {
-                    host::disconnect(&context);
-                    decoder = host::Decoder::new();
-                    continue;
-                }
-            };
+            session.update(&context, sender.dtr(), sender.line_coding().data_rate());
             if session.epoch != seen_epoch {
                 seen_epoch = session.epoch;
                 decoder = host::Decoder::new();
+                cursor = 0;
+                available = 0;
             }
-            if !receiver.dtr() {
-                continue;
-            }
-            for byte in &input[..count] {
-                let Some(request) = decoder.push(*byte) else {
+            let mut rejected = None;
+            while cursor < available {
+                let byte = input[cursor];
+                cursor += 1;
+                if !session.dtr {
                     continue;
-                };
-                let response = match host::submit(&context, request) {
-                    Err(failure) => Some(host::Packet::Error {
-                        token: request.token(),
-                        failure,
-                    }),
-                    Ok(()) => {
-                        poll_fn(|_| {
-                            session.update(
-                                &context,
-                                sender.dtr(),
-                                sender.line_coding().data_rate(),
-                            );
-                            if session.epoch != seen_epoch || !sender.dtr() {
-                                return Poll::Ready(None);
-                            }
-                            host::receive(&context)
-                                .map_or(Poll::Pending, |reply| Poll::Ready(Some(reply)))
-                        })
-                        .await
-                    }
-                };
-                if let Some(response) = response {
-                    let n = response.encode(&mut output);
-                    let written = {
-                        let mut result = Ok(());
-                        // Endpoint packets do not delimit protocol records.
-                        for chunk in output[..n]
-                            .chunks(64)
-                            .chain((n % 64 == 0).then_some(&[][..]))
-                        {
-                            let mut write = pin!(sender.write_packet(chunk));
-                            result = poll_fn(|cx| {
-                                session.update(
-                                    &context,
-                                    receiver.dtr(),
-                                    receiver.line_coding().data_rate(),
-                                );
-                                write.as_mut().poll(cx)
-                            })
-                            .await;
-                            if result.is_err() {
-                                break;
-                            }
-                        }
-                        result
-                    };
-                    if written.is_err() {
-                        host::disconnect(&context);
-                        decoder = host::Decoder::new();
+                }
+                if let Some(request) = decoder.push(byte) {
+                    if let Err(failure) = host::submit(&context, request) {
+                        rejected = Some(host::Packet::Error {
+                            token: request.token(),
+                            failure,
+                        });
                         break;
                     }
+                }
+            }
+            let activity = if let Some(reply) = rejected {
+                Activity::Output(reply)
+            } else {
+                let mut read = pin!(receiver.read_packet(&mut input));
+                poll_fn(|cx| {
+                    session.update(&context, sender.dtr(), sender.line_coding().data_rate());
+                    if session.epoch != seen_epoch {
+                        return Poll::Ready(Activity::SessionChanged);
+                    }
+                    if let Poll::Ready(result) = read.as_mut().poll(cx) {
+                        return Poll::Ready(Activity::Input(result));
+                    }
+                    if session.dtr {
+                        if let Some(packet) = host::receive(&context) {
+                            return Poll::Ready(Activity::Output(packet));
+                        }
+                    }
+                    Poll::Pending
+                })
+                .await
+                // embassy-nrf 0.11 waits for OUT readiness before starting DMA;
+                // DMA completes synchronously within that poll. Dropping this
+                // pending read consumes no bytes and leaves no DMA using input.
+            };
+            let packet = match activity {
+                Activity::SessionChanged => continue,
+                Activity::Input(Ok(n)) => {
+                    cursor = 0;
+                    available = n;
+                    continue;
+                }
+                Activity::Input(Err(_)) => {
+                    session.close(&context);
+                    continue;
+                }
+                Activity::Output(packet) => packet,
+            };
+            // A leading delimiter also discards an interrupted previous record.
+            let n = packet.encode((&mut output[1..]).try_into().unwrap()) + 1;
+            for chunk in output[..n]
+                .chunks(64)
+                .chain((n % 64 == 0).then_some(&[][..]))
+            {
+                let written = {
+                    let mut write = pin!(sender.write_packet(chunk));
+                    poll_fn(|cx| {
+                        // Keep DTR and 1200-baud recovery live under IN backpressure.
+                        session.update(
+                            &context,
+                            receiver.dtr(),
+                            receiver.line_coding().data_rate(),
+                        );
+                        if session.epoch != seen_epoch || !session.dtr {
+                            return Poll::Ready(Err(EndpointError::Disabled));
+                        }
+                        write.as_mut().poll(cx)
+                    })
+                    .await
+                };
+                if written.is_err() {
+                    session.close(&context);
+                    break;
                 }
             }
         }

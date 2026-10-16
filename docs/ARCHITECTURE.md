@@ -12,8 +12,10 @@ The attached nRF and Linux host use one resident network identity. The nRF runs
 the ordinary kernel's formation, link maintenance, forwarding, and radio work;
 `peer/` is a Linux client for its optional local host endpoint. Binary USB status
 and local/remote links, surface/state reads, and native invocation are implemented.
-The full path has run on two nRFs with a software dimmer appliance. Host delta
-streaming, continuous daemon behavior, and frontend integration remain next. No central compiler is required.
+The operation path has run on two nRFs with a software dimmer appliance. Registered
+changes now stream from the kernel through USB to a blocking Linux consumer.
+Continuous daemon behavior and frontend integration remain next. No central compiler
+is required.
 
 ```mermaid
 flowchart LR
@@ -24,7 +26,7 @@ flowchart LR
     ui --> health["First-frame readiness and event-loop watchdog"]
     peer["peer/: Linux host client"] -.->|planned observations and operations| ui
     ui -.->|planned user intent| peer
-    peer -->|binary USB host link| radio["firmware/nrf52840: resident kernel and USB task"]
+    peer <-->|requests, replies and pushed observations| radio["firmware/nrf52840: resident kernel and USB task"]
     radio <-->|ordinary peer frames| vertices["Lattice vertices"]
     wire["lattice-peer-wire: scalar codec and host records"] --> peer
     wire --> radio
@@ -48,17 +50,24 @@ module belongs to Weston; the image's Linux configuration and patches belong und
 recipes-kernel. Future kernel modules can be added to this image without a shared
 installation or runtime mode with the source application from which it was extracted.
 The backend is currently a library and CLI, separate from the Slint process. Its
-service/UI boundary will be added when those operations exist. USB framing and scalar encoding belong to the shared codec, host admission/read completion to the common kernel, USB
-peripheral setup to the XIAO application, and Linux descriptor handling to `peer/`.
+service/UI boundary will be added when those operations exist. USB framing and
+scalar encoding belong to the shared codec, host admission/read completion and
+bounded event delivery to the common kernel, USB peripheral setup to the XIAO application, and Linux descriptor handling to `peer/`.
 No runtime dependency points at a sibling working checkout or a lab directory.
 
 The Linux consumer requests complete immutable surface bytes and exposes a
 `SurfaceSummary` for declaration/type inspection; the full raw mathematics remains
 available to future IR consumers. Native outcomes and registered state are distinct.
 The client never retries a mutation automatically or substitutes its success status
-for a state observation. It does not maintain a global foreign-state mirror.
+for a state observation. It does not maintain a global foreign-state mirror. The
+host endpoint retains eight
+pending registered changes; the Linux client retains 32 while processing other
+operations. Oldest eviction is reported with its source and count. Both buffers
+serve transport, not graph execution. The connection streams subsequent changes
+without state polling, initial snapshots, or a durable history. Linux waits on the
+USB descriptor, while the MCU services its USB stack through the existing RTOS.
 
-The final pinned image passed the full operation sequence and a later read with
+The earlier host v2 image passed the full operation sequence and a later read with
 the remote diagnostic console closed. Earlier closed-console and post-reflash
 reads timed out; console state alone was not established as their cause. A concrete
 read-token reuse defect across MCU restart was corrected. Functional validation

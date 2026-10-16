@@ -4,16 +4,28 @@ use lattice_tablet_peer::{
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<_> = std::env::args().skip(1).collect();
     if args.len() < 2 {
-        return Err("usage: lattice-peer DEVICE status|links|surface|state|invoke ...".into());
+        return Err(
+            "usage: lattice-peer DEVICE status|links|surface|state|invoke|watch ...".into(),
+        );
     }
     let parse = |s: &String| u64::from_str_radix(s.trim_start_matches("0x"), 16);
     match args[1].as_str() {
+        "watch" if (2..=3).contains(&args.len()) => {},
         "status" if args.len() == 2 => {}, "links" if (2..=4).contains(&args.len()) => {},
         "surface" if (3..=4).contains(&args.len()) => {}, "state" if args.len() == 4 => {},
         "invoke" if args.len() >= 4 => {},
-        _ => return Err("usage: DEVICE status | links [OWNER [VIA]] | surface OWNER [FILE] | state OWNER ATTRIBUTE | invoke OWNER TRANSFORMER [bool:true|u8:42|i32:-1 ...]".into()),
+        _ => return Err("usage: DEVICE watch [COUNT] | status | links [OWNER [VIA]] | surface OWNER [FILE] | state OWNER ATTRIBUTE | invoke OWNER TRANSFORMER [bool:true|u8:42|i32:-1 ...]".into()),
     }
     let mut client = Client::open(&args[0])?;
+    if args[1] == "watch" {
+        let count = args.get(2).map(|s| s.parse::<usize>()).transpose()?;
+        let mut received = 0;
+        while count.is_none_or(|limit| received < limit) {
+            println!("{:?}", client.wait_event(None)?);
+            received += 1;
+        }
+        return Ok(());
+    }
     let status = client.status()?;
     let Packet::Ready {
         address,
@@ -79,7 +91,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 );
             };
             println!(
-                "INVOKED owner={owner:016x} transformer={transformer:016x} status={status:?} (native result; read state to observe changes)"
+                "INVOKED owner={owner:016x} transformer={transformer:016x} status={status:?} (native result; registered changes arrive separately)"
             );
             return if status == InvokeStatus::Invoked {
                 Ok(())

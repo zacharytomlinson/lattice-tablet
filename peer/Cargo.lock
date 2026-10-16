@@ -10,7 +10,7 @@ source = "git+ssh://git@github.com/zacharytomlinson/lattice-ir.git?rev=8cc8629fc
 [[package]]
 name = "lattice-peer-wire"
 version = "0.1.0"
-source = "git+ssh://git@github.com/zacharytomlinson/lattice-vertex.git?rev=df71c62404509f3f527917d387838d482a83db7d#df71c62404509f3f527917d387838d482a83db7d"
+source = "git+ssh://git@github.com/zacharytomlinson/lattice-vertex.git?rev=ce544e4e72ae0182b9a8807c289cb2aeedd05812#ce544e4e72ae0182b9a8807c289cb2aeedd05812"
 dependencies = [
  "lattice-ir",
 ]

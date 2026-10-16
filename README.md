@@ -10,8 +10,9 @@ own installation. It starts with an empty Home screen. The [Linux peer client](p
 and [XIAO radio application](firmware/nrf52840/README.md) now provide a binary USB
 link, link/surface/state reads, and native transformer invocation, exercised with
 two nRF52840 boards and the maintained software dimmer fixture. The client consumes
-handles from the device's full mathematical surface. Delta streaming and UI
-integration are next; no appliance controls are connected to the frontend yet.
+handles from the device's full mathematical surface and receives registered changes
+over USB without polling the companion. Daemon/UI integration is next; no appliance
+controls are connected to the frontend yet.
 Camera layouts remain available, but image delivery is not implemented.
 
 The [architecture map](docs/ARCHITECTURE.md) distinguishes implemented support
